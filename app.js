@@ -216,7 +216,7 @@ const eChurchOther = $('e-church-other');
 let editing = null; // { reg_code, auth_name, auth_church }
 
 // Reuse the registration form's choices so the lists never drift apart
-$('e-sex').innerHTML = form.querySelector('.seg').innerHTML;
+$('e-gender').innerHTML = form.querySelector('.seg').innerHTML;
 $('e-role').innerHTML = form.querySelector('.roles').innerHTML;
 eChurch.innerHTML = church.innerHTML;
 wireOther(eChurch, eChurchOther);
