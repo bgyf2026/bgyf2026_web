@@ -379,3 +379,5 @@ footer { max-width: 580px; margin: 18px auto 0; text-align: center; color: rgba(
     font-weight: 600;
     text-align: center;
 }
+
+.opt { font-style: normal; font-weight: 500; color: var(--muted); }

@@ -1,6 +1,6 @@
 // ================= EDIT THIS =================
 // Paste your Apps Script Web app URL here (ends with /exec)
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzH6HSInvwVGMjIaRObZ776HJuiMzr1PHWiiZmbz0qRLqZKyEJjlw1u6k21opOX1Q/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/PASTE_YOUR_DEPLOYMENT_ID/exec';
 // =============================================
 
 const $ = (id) => document.getElementById(id);
@@ -103,7 +103,7 @@ function localCheck(d) {
     if (!d.full_name) e.full_name = 'Please enter your full name.';
     if (!/^\d{1,3}$/.test(d.age) || +d.age < 5 || +d.age > 100) e.age = 'Please enter a valid age (5–100).';
     if (!d.sex) e.sex = 'Please select your sex.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email)) e.email = 'Please enter a valid email address.';
+    if (d.email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.email)) e.email = 'Please enter a valid email address, or leave it blank.';
     if (!d.local_church) e.local_church = 'Please select or type your local church.';
     if (!d.role) e.role = 'Please select your role.';
     if (!d.consent) e.consent = 'Please agree to the data privacy notice.';
@@ -208,11 +208,12 @@ $('logout').addEventListener('click', () => {
 });
 
 // ================= EDIT PROFILE =================
-const unlockForm = $('unlock');
+// Editing opens straight from the logged-in pass card: the server checks
+// that the reg code still belongs to the name + church on this device.
 const editForm = $('editform');
 const eChurch = $('e-church');
 const eChurchOther = $('e-church-other');
-let editing = null; // { reg_code, auth_email }
+let editing = null; // { reg_code, auth_name, auth_church }
 
 // Reuse the registration form's choices so the lists never drift apart
 $('e-sex').innerHTML = form.querySelector('.seg').innerHTML;
@@ -220,18 +221,30 @@ $('e-role').innerHTML = form.querySelector('.roles').innerHTML;
 eChurch.innerHTML = church.innerHTML;
 wireOther(eChurch, eChurchOther);
 
-function startEdit(rec) {
-    editing = { reg_code: rec.reg_code, auth_email: '' };
-    $('edit-for').textContent = `${rec.full_name} · ${rec.reg_code}`;
-    unlockForm.reset();
-    clearErrors(unlockForm, $('u-alert'));
-    clearErrors(editForm, $('e-alert'));
+async function startEdit(rec, btn) {
     hide($('saved'));
-    show(unlockForm);
-    hide(editForm);
-    show($('edit'));
-    $('edit').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    unlockForm.querySelector('input').focus({ preventScroll: true });
+    clearErrors(editForm, $('e-alert'));
+    btn.disabled = true;
+    btn.textContent = 'Opening…';
+    try {
+        const auth = { reg_code: rec.reg_code, auth_name: rec.full_name, auth_church: rec.local_church };
+        const out = await callApi(Object.assign({ action: 'profile' }, auth));
+        if (out.ok) {
+            editing = auth;
+            $('edit-for').textContent = `${rec.full_name} · ${rec.reg_code}`;
+            fillEdit(out.profile);
+            show($('edit'));
+            $('edit').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            editForm.full_name.focus({ preventScroll: true });
+        } else {
+            show($('saved'), out.error || 'Something went wrong. Please try again.');
+        }
+    } catch (err) {
+        show($('saved'), 'Could not reach the server. Check your internet connection and try again.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Edit profile';
+    }
 }
 
 function closeEdit() {
@@ -245,7 +258,7 @@ function fillEdit(p) {
     editForm.reset();
     editForm.full_name.value = p.full_name;
     editForm.age.value = p.age;
-    editForm.email.value = p.email;
+    editForm.email.value = p.email || '';
     editForm.querySelectorAll('[name=sex]').forEach((i) => (i.checked = i.value === p.sex));
     editForm.querySelectorAll('[name=role]').forEach((i) => (i.checked = i.value === p.role));
     const listed = [...eChurch.options].some((o) => o.value === p.local_church);
@@ -253,35 +266,6 @@ function fillEdit(p) {
     eChurchOther.value = listed ? '' : p.local_church;
     eChurchOther.hidden = listed;
 }
-
-unlockForm.addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    clearErrors(unlockForm, $('u-alert'));
-    const email = String(unlockForm.auth_email.value || '').trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-        return setErrors(unlockForm, { auth_email: 'Please enter a valid email address.' });
-    }
-    const btn = $('u-submit');
-    btn.disabled = true;
-    btn.textContent = 'Checking…';
-    try {
-        const out = await callApi({ action: 'unlock', reg_code: editing.reg_code, auth_email: email });
-        if (out.ok) {
-            editing.auth_email = email;
-            fillEdit(out.profile);
-            hide(unlockForm);
-            show(editForm);
-            editForm.full_name.focus();
-        } else {
-            show($('u-alert'), out.error || 'Something went wrong. Please try again.');
-        }
-    } catch (err) {
-        show($('u-alert'), 'Could not reach the server. Check your internet connection and try again.');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = 'Continue';
-    }
-});
 
 editForm.addEventListener('submit', async (ev) => {
     ev.preventDefault();
@@ -304,7 +288,7 @@ editForm.addEventListener('submit', async (ev) => {
     btn.disabled = true;
     btn.textContent = 'Saving…';
     try {
-        const out = await callApi(Object.assign({ action: 'update', reg_code: editing.reg_code, auth_email: editing.auth_email }, data));
+        const out = await callApi(Object.assign({ action: 'update' }, editing, data));
         if (out.ok) {
             const me = (loadMe() || []).map((r) => (r.reg_code === out.result.reg_code ? out.result : r));
             saveMe(me);
@@ -348,7 +332,7 @@ function renderMe() {
         c.append(dl);
         const editBtn = el('button', 'btn small-dark', 'Edit profile');
         editBtn.type = 'button';
-        editBtn.addEventListener('click', () => startEdit(r));
+        editBtn.addEventListener('click', () => startEdit(r, editBtn));
         c.append(editBtn);
         cards.append(c);
     });
