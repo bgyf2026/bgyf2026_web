@@ -67,6 +67,66 @@ function wireOther(select, other) {
 const SAMPLE_PHOTOS = { Male: 'assets/avatar-male.jpg', Female: 'assets/avatar-female.jpg' };
 function samplePhoto(sex) { return SAMPLE_PHOTOS[sex] || ''; }
 
+// Small copies of uploaded photos, kept on this phone so the profile shows them instantly.
+// Cleared on log out. On another phone, the photo is fetched once from the Sheet's Drive folder.
+const THUMB_KEY = 'bgyf2026_thumbs';
+function loadThumbs() { try { return JSON.parse(localStorage.getItem(THUMB_KEY) || '{}'); } catch (e) { return {}; } }
+function saveThumb(code, url) {
+    const all = loadThumbs();
+    all[code] = url;
+    try { localStorage.setItem(THUMB_KEY, JSON.stringify(all)); } catch (e) { /* storage full or blocked: show it this time only */ }
+    memThumbs[code] = url;
+}
+function forgetThumbs() { try { localStorage.removeItem(THUMB_KEY); } catch (e) {} for (const k in memThumbs) delete memThumbs[k]; }
+const memThumbs = {};
+function cachedThumb(code) { return memThumbs[code] || loadThumbs()[code] || ''; }
+
+async function makeThumb(src, side = 360) {
+    const im = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        i.src = src;
+    });
+    const scale = Math.min(1, side / Math.max(im.naturalWidth, im.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(im.naturalWidth * scale);
+    c.height = Math.round(im.naturalHeight * scale);
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.85);
+}
+
+const thumbJobs = {};
+function fetchThumb(r) {
+    if (!thumbJobs[r.reg_code]) {
+        thumbJobs[r.reg_code] = callApi({ action: 'thumb', reg_code: r.reg_code, auth_name: r.full_name, auth_church: r.local_church })
+            .then(async (out) => {
+                if (!out.ok) return '';
+                const raw = `data:${out.type};base64,${out.data}`;
+                const small = await makeThumb(raw).catch(() => raw);
+                saveThumb(r.reg_code, small);
+                return small;
+            })
+            .catch(() => '')
+            .finally(() => { delete thumbJobs[r.reg_code]; });
+    }
+    return thumbJobs[r.reg_code];
+}
+
+/** Puts the right picture in an <img>: the real photo if uploaded, otherwise the gender sample. */
+function setPhotoImg(img, r, onState) {
+    const own = r.has_photo ? cachedThumb(r.reg_code) : '';
+    if (own) { img.src = own; onState('own'); return; }
+    const sample = samplePhoto(r.sex);
+    if (sample) { img.src = sample; onState(r.has_photo ? 'loading' : 'sample'); } else { img.removeAttribute('src'); onState('none'); }
+    if (r.has_photo) {
+        fetchThumb(r).then((url) => {
+            if (url && img.isConnected) { img.src = url; onState('own'); }
+            else if (!url) onState(sample ? 'sample-uploaded' : 'none');
+        });
+    }
+}
+
 // Checks the size, shows a preview, and prepares the upload in the background:
 // large photos are scaled to 1600 px JPEG so they upload quickly on mobile data.
 function photoPicker(inputId, previewId, phId) {
@@ -315,6 +375,7 @@ lookupForm.addEventListener('submit', async (ev) => {
 
 $('logout').addEventListener('click', () => {
     forgetMe();
+    forgetThumbs();
     closeEdit();
     hide($('saved'));
     renderMe();
@@ -434,13 +495,18 @@ function renderMe() {
     }
     me.forEach((r) => {
         const c = el('div', 'pass');
-        const sample = r.has_photo ? '' : samplePhoto(r.sex);
-        if (sample) {
+        if (r.has_photo || samplePhoto(r.sex)) {
             const fig = el('div', 'pass-avatar');
             const im = el('img');
-            im.src = sample;
-            im.alt = 'Sample photo';
-            fig.append(im, el('span', '', 'Sample'));
+            const tag = el('span', '', '');
+            fig.append(im, tag);
+            setPhotoImg(im, r, (state) => {
+                im.alt = state === 'own' ? `${r.full_name}'s ID photo` : 'Sample photo';
+                fig.classList.toggle('own', state === 'own');
+                fig.classList.toggle('loading', state === 'loading');
+                tag.textContent = state === 'sample' ? 'Sample' : state === 'loading' ? 'Loading…' : '';
+                tag.hidden = !tag.textContent;
+            });
             c.append(fig);
         }
         c.append(el('p', 'kicker', 'Registered'));
@@ -510,10 +576,15 @@ function showPhotoTarget() {
     st.classList.toggle('done', !!r.has_photo);
     $('ph-submit').textContent = r.has_photo ? 'Replace photo' : 'Upload photo';
     const sample = $('photo-sample');
-    const src = r.has_photo ? '' : samplePhoto(r.sex);
-    sample.hidden = !src;
-    if (src) sample.src = src; else sample.removeAttribute('src');
-    sample.closest('.photo-pick').classList.toggle('with-sample', !!src);
+    const box = sample.closest('.photo-pick');
+    const label = $('photo-ph').querySelector('b');
+    setPhotoImg(sample, r, (state) => {
+        sample.hidden = state === 'none';
+        box.classList.toggle('with-sample', state !== 'none');
+        box.classList.toggle('current', state === 'own');
+        label.textContent = state === 'own' ? 'Tap to replace your photo' : 'Take a selfie or choose a photo';
+        $('photo-ph').dataset.label = label.textContent;
+    });
 }
 
 function renderPhotoTab() {
@@ -560,6 +631,8 @@ photoForm.addEventListener('submit', async (ev) => {
         btn.textContent = 'Uploading…';
         const out = await callApi({ action: 'photo', reg_code: r.reg_code, auth_name: r.full_name, auth_church: r.local_church, photo });
         if (out.ok) {
+            const small = await makeThumb(`data:${photo.type};base64,${photo.data}`).catch(() => '');
+            if (small) saveThumb(out.result.reg_code, small);
             saveMe((loadMe() || []).map((x) => (x.reg_code === out.result.reg_code ? out.result : x)));
             tabPhoto.reset();
             renderMe();

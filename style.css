@@ -494,3 +494,10 @@ footer { max-width: 580px; margin: 18px auto 0; text-align: center; color: rgba(
     letter-spacing: .14em;
     text-transform: uppercase;
 }
+
+/* ---------- Real photo on the profile ---------- */
+.pass-avatar { width: 96px; }
+.pass-avatar.own { border-color: var(--orange-2); }
+.pass-avatar.loading img { opacity: .5; }
+.pass-avatar span[hidden] { display: none; }
+.photo-pick.current .photo-sample { opacity: 1; }
