@@ -206,7 +206,7 @@ footer { max-width: 580px; margin: 18px auto 0; text-align: center; color: rgba(
 /* ---------- Tabs ---------- */
 .tabs {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1.35fr .9fr;
     gap: 4px;
     padding: 4px;
     margin-bottom: 22px;
@@ -381,3 +381,116 @@ footer { max-width: 580px; margin: 18px auto 0; text-align: center; color: rgba(
 }
 
 .opt { font-style: normal; font-weight: 500; color: var(--muted); }
+/* ---------- ID photo ---------- */
+.photo-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+.photo-pick {
+    display: grid;
+    place-items: center;
+    width: 160px;
+    aspect-ratio: 3 / 4;
+    border: 1.5px dashed var(--line);
+    border-radius: 12px;
+    background: var(--cream-2);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color .15s;
+}
+.photo-pick:hover { border-color: var(--orange); }
+.photo-input:focus-visible + .photo-tips,
+.photo-input:focus-visible ~ .err { outline: none; }
+.field:focus-within .photo-pick { border-color: var(--orange); box-shadow: 0 0 0 4px rgba(238, 122, 34, .2); }
+.photo-preview { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-ph {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+    padding: 12px;
+    text-align: center;
+    color: var(--muted);
+}
+.photo-ph svg { color: var(--orange); }
+.photo-ph b { color: var(--ink); font-size: .88rem; line-height: 1.25; }
+.photo-ph small { font-size: .75rem; }
+.photo-tips { margin: 2px 0 0; font-size: .82rem; color: var(--muted); }
+.photo-status { margin: 0 0 4px; font-size: .86rem; color: var(--muted); }
+.photo-status.missing { color: var(--bad); font-weight: 600; }
+.pass-meta dd.missing { color: var(--orange-2); }
+.pass-meta { grid-template-columns: 1fr 1fr; }
+
+
+/* ---------- ID photo tab ---------- */
+#tab-photo h2 { margin-bottom: 4px; }
+.ph-out {
+    display: grid;
+    gap: 12px;
+    justify-items: center;
+    margin-top: 16px;
+    padding: 22px 18px;
+    border: 1.5px dashed var(--line);
+    border-radius: 14px;
+    text-align: center;
+}
+.ph-out p { margin: 0; }
+.ph-for {
+    display: grid;
+    gap: 2px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--asphalt);
+    color: var(--cream);
+}
+.ph-for b { font-size: 1.05rem; }
+.ph-for span { font-size: .82rem; color: rgba(246, 241, 221, .7); font-family: ui-monospace, Menlo, Consolas, monospace; }
+#photoform { margin-top: 16px; }
+.photo-status.done { color: #1f6b43; font-weight: 600; }
+.pass-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
+.pass-actions .btn.small-dark { margin-top: 0; }
+.btn.small-dark.accent { background: var(--orange); border-color: var(--orange); color: var(--asphalt); }
+.btn.small-dark.accent:hover { color: var(--asphalt); filter: brightness(1.08); }
+
+/* ---------- Sample photo (shown until a real one is uploaded) ---------- */
+.photo-pick { position: relative; }
+.photo-sample, .photo-pick .photo-preview { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.photo-sample { opacity: .55; }
+.photo-pick .photo-preview { z-index: 2; }
+.photo-ph { position: relative; z-index: 1; }
+.photo-pick.with-sample { border-style: solid; }
+.photo-pick.with-sample .photo-ph {
+    align-self: end;
+    width: 100%;
+    padding: 10px 8px;
+    background: rgba(28, 28, 28, .78);
+    color: rgba(246, 241, 221, .8);
+}
+.photo-pick.with-sample .photo-ph b { color: var(--cream); font-size: .8rem; }
+.photo-pick.with-sample .photo-ph svg { display: none; }
+
+.pass-avatar {
+    position: relative;
+    width: 84px;
+    margin: 0 auto 12px;
+    aspect-ratio: 3 / 4;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid rgba(246, 241, 221, .25);
+}
+.pass-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pass-avatar span {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 2px 0;
+    background: rgba(28, 28, 28, .75);
+    color: var(--orange-2);
+    font-size: .62rem;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+}

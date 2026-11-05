@@ -7,6 +7,8 @@ const $ = (id) => document.getElementById(id);
 const form = $('form');
 const lookupForm = $('lookup');
 const STORE_KEY = 'bgyf2026_me';
+const PHOTO_MAX_BYTES = 5 * 1024 * 1024;  // 5 MB
+const PHOTO_MAX_SIDE = 1600;              // px; plenty for a printed ID, much faster to upload
 
 // ---------- small helpers ----------
 function show(el, text) {
@@ -60,13 +62,113 @@ function wireOther(select, other) {
     });
 }
 
+// ---------- ID photo ----------
+// Sample photo shown until a real one is uploaded, by gender
+const SAMPLE_PHOTOS = { Male: 'assets/avatar-male.jpg', Female: 'assets/avatar-female.jpg' };
+function samplePhoto(sex) { return SAMPLE_PHOTOS[sex] || ''; }
+
+// Checks the size, shows a preview, and prepares the upload in the background:
+// large photos are scaled to 1600 px JPEG so they upload quickly on mobile data.
+function photoPicker(inputId, previewId, phId) {
+    const input = $(inputId);
+    const img = $(previewId);
+    const ph = $(phId);
+    const slot = input.form.querySelector('.err[data-for="photo"]');
+    let job = null;
+    let url = null;
+
+    function reset() {
+        input.value = '';
+        job = null;
+        if (url) URL.revokeObjectURL(url);
+        url = null;
+        img.hidden = true;
+        img.removeAttribute('src');
+        ph.hidden = false;
+        ph.querySelector('b').textContent = ph.dataset.label || ph.querySelector('b').textContent;
+    }
+    ph.dataset.label = ph.querySelector('b').textContent;
+
+    img.addEventListener('error', () => {
+        // Some formats (e.g. HEIC on Android) can't be previewed but can still be uploaded
+        img.hidden = true;
+        ph.hidden = false;
+        ph.querySelector('b').textContent = 'Photo selected (no preview)';
+    });
+
+    input.addEventListener('change', () => {
+        slot.textContent = '';
+        const f = input.files && input.files[0];
+        if (!f) return reset();
+        const isImage = /^image\//.test(f.type) || /\.(heic|heif)$/i.test(f.name);
+        if (!isImage) {
+            reset();
+            slot.textContent = 'Please choose a photo (JPG or PNG).';
+            return;
+        }
+        if (f.size > PHOTO_MAX_BYTES) {
+            reset();
+            slot.textContent = `This photo is ${(f.size / 1048576).toFixed(1)} MB. Please choose one up to 5 MB.`;
+            return;
+        }
+        if (url) URL.revokeObjectURL(url);
+        url = URL.createObjectURL(f);
+        img.src = url;
+        img.hidden = false;
+        ph.hidden = true;
+        job = preparePhoto(f);
+    });
+
+    return { get: () => job, reset };
+}
+
+function fileToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result).split(',')[1] || '');
+        r.onerror = () => reject(r.error);
+        r.readAsDataURL(blob);
+    });
+}
+
+function loadImage(file) {
+    return new Promise((resolve, reject) => {
+        const im = new Image();
+        const u = URL.createObjectURL(file);
+        im.onload = () => { URL.revokeObjectURL(u); resolve(im); };
+        im.onerror = () => { URL.revokeObjectURL(u); reject(new Error('decode')); };
+        im.src = u;
+    });
+}
+
+async function preparePhoto(file) {
+    try {
+        const im = await loadImage(file);
+        const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(im.naturalWidth, im.naturalHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(im.naturalWidth * scale);
+        c.height = Math.round(im.naturalHeight * scale);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        const out = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9));
+        if (out && out.size < file.size) return { type: 'image/jpeg', data: await fileToBase64(out) };
+    } catch (e) { /* fall back to the original file */ }
+    let type = (file.type || '').toLowerCase();
+    if (!type && /\.heic$/i.test(file.name)) type = 'image/heic';
+    if (!type && /\.heif$/i.test(file.name)) type = 'image/heif';
+    return { type: type || 'image/jpeg', data: await fileToBase64(file) };
+}
+
 // Saved login on this device (wrapped: storage can be blocked)
 function saveMe(list) { try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch (e) {} }
 function loadMe() { try { return JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { return null; } }
 function forgetMe() { try { localStorage.removeItem(STORE_KEY); } catch (e) {} }
 
 // ---------- tabs ----------
-const tabs = { register: [$('t-register'), $('tab-register')], check: [$('t-check'), $('tab-check')] };
+const tabs = {
+    register: [$('t-register'), $('tab-register')],
+    check: [$('t-check'), $('tab-check')],
+    photo: [$('t-photo'), $('tab-photo')],
+};
 function openTab(name) {
     for (const [key, [btn, panel]] of Object.entries(tabs)) {
         const on = key === name;
@@ -76,6 +178,8 @@ function openTab(name) {
 }
 $('t-register').addEventListener('click', () => openTab('register'));
 $('t-check').addEventListener('click', () => openTab('check'));
+$('t-photo').addEventListener('click', () => openTab('photo'));
+let afterLogin = null; // tab to return to after logging in
 
 // ================= REGISTER =================
 const submitBtn = $('submit');
@@ -124,7 +228,7 @@ form.addEventListener('submit', async (ev) => {
         if (out.ok) {
             $('s-name').textContent = out.full_name;
             $('s-code').textContent = out.reg_code;
-            saveMe([{ reg_code: out.reg_code, full_name: out.full_name, local_church: data.local_church, role: data.role, registered_at: 'Just now' }]);
+            saveMe([{ reg_code: out.reg_code, full_name: out.full_name, sex: data.sex, local_church: data.local_church, role: data.role, registered_at: 'Just now', has_photo: !!out.has_photo }]);
             renderMe();
             hide(form);
             show($('success'));
@@ -152,6 +256,11 @@ $('again').addEventListener('click', () => {
 
 $('see-program').addEventListener('click', () => {
     openTab('check');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+$('go-photo').addEventListener('click', () => {
+    openTab('photo');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
@@ -185,6 +294,10 @@ lookupForm.addEventListener('submit', async (ev) => {
             renderMe();
             lookupForm.reset();
             lChurchOther.hidden = true;
+            if (afterLogin) {
+                openTab(afterLogin);
+                afterLogin = null;
+            }
         } else if (out.errors) {
             setErrors(lookupForm, out.errors);
         } else if (out.notFound) {
@@ -310,6 +423,7 @@ editForm.addEventListener('submit', async (ev) => {
 });
 
 function renderMe() {
+    renderPhotoTab();
     const me = loadMe();
     const cards = $('me-cards');
     cards.replaceChildren();
@@ -320,26 +434,149 @@ function renderMe() {
     }
     me.forEach((r) => {
         const c = el('div', 'pass');
+        const sample = r.has_photo ? '' : samplePhoto(r.sex);
+        if (sample) {
+            const fig = el('div', 'pass-avatar');
+            const im = el('img');
+            im.src = sample;
+            im.alt = 'Sample photo';
+            fig.append(im, el('span', '', 'Sample'));
+            c.append(fig);
+        }
         c.append(el('p', 'kicker', 'Registered'));
         c.append(el('p', 'pass-name', r.full_name));
         c.append(el('p', 'code', r.reg_code));
         const dl = el('dl', 'pass-meta');
-        [['Church', r.local_church], ['Role', r.role], ['Registered', r.registered_at]].forEach(([k, v]) => {
+        [['Church', r.local_church], ['Role', r.role], ['Registered', r.registered_at], ['ID photo', r.has_photo ? 'Uploaded' : 'Missing']].forEach(([k, v]) => {
             const d = el('div');
-            d.append(el('dt', '', k), el('dd', '', v));
+            d.append(el('dt', '', k), el('dd', k === 'ID photo' && !r.has_photo ? 'missing' : '', v));
             dl.append(d);
         });
         c.append(dl);
         const editBtn = el('button', 'btn small-dark', 'Edit profile');
         editBtn.type = 'button';
         editBtn.addEventListener('click', () => startEdit(r, editBtn));
-        c.append(editBtn);
+        const actions = el('div', 'pass-actions');
+        if (!r.has_photo) {
+            const photoBtn = el('button', 'btn small-dark accent', 'Upload ID photo');
+            photoBtn.type = 'button';
+            photoBtn.addEventListener('click', () => openTab('photo'));
+            actions.append(photoBtn);
+        }
+        actions.append(editBtn);
+        c.append(actions);
         cards.append(c);
     });
     if (me.length > 1) cards.prepend(el('p', 'hint left', `${me.length} registrations match this name and church.`));
     hide(lookupForm);
     show($('me'));
 }
+
+// ================= ID PHOTO TAB =================
+const photoForm = $('photoform');
+const tabPhoto = photoPicker('photo', 'photo-preview', 'photo-ph');
+const phWho = $('ph-who');
+
+$('ph-login').addEventListener('click', () => {
+    afterLogin = 'photo';
+    openTab('check');
+    lookupForm.querySelector('input').focus();
+});
+$('ph-register').addEventListener('click', () => openTab('register'));
+
+function photoTarget() {
+    const me = loadMe() || [];
+    return me.find((r) => r.reg_code === phWho.value) || me[0] || null;
+}
+
+let shownCode = null;
+function showPhotoTarget() {
+    const r = photoTarget();
+    if (!r) return;
+    if (r.reg_code !== shownCode) {
+        // a different person: clear the last person's messages and chosen file
+        shownCode = r.reg_code;
+        hide($('ph-saved'));
+        clearErrors(photoForm, $('ph-alert'));
+        tabPhoto.reset();
+    }
+    $('ph-name').textContent = r.full_name;
+    $('ph-code').textContent = `${r.reg_code} · ${r.local_church}`;
+    const st = $('ph-status');
+    st.textContent = r.has_photo
+        ? 'Your ID photo is uploaded. Upload a new one only if you want to replace it.'
+        : 'No ID photo yet.';
+    st.classList.toggle('missing', !r.has_photo);
+    st.classList.toggle('done', !!r.has_photo);
+    $('ph-submit').textContent = r.has_photo ? 'Replace photo' : 'Upload photo';
+    const sample = $('photo-sample');
+    const src = r.has_photo ? '' : samplePhoto(r.sex);
+    sample.hidden = !src;
+    if (src) sample.src = src; else sample.removeAttribute('src');
+    sample.closest('.photo-pick').classList.toggle('with-sample', !!src);
+}
+
+function renderPhotoTab() {
+    const me = loadMe() || [];
+    if (!me.length) {
+        shownCode = null;
+        show($('ph-out'));
+        hide(photoForm);
+        return;
+    }
+    hide($('ph-out'));
+    show(photoForm);
+    const keep = phWho.value;
+    phWho.replaceChildren();
+    me.forEach((r) => {
+        const o = el('option', '', `${r.full_name} · ${r.reg_code}`);
+        o.value = r.reg_code;
+        phWho.append(o);
+    });
+    if (me.some((r) => r.reg_code === keep)) phWho.value = keep;
+    $('ph-who-wrap').hidden = me.length < 2;
+    showPhotoTarget();
+}
+
+phWho.addEventListener('change', () => {
+    hide($('ph-saved'));
+    showPhotoTarget();
+});
+
+photoForm.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    clearErrors(photoForm, $('ph-alert'));
+    hide($('ph-saved'));
+    const r = photoTarget();
+    const job = tabPhoto.get();
+    if (!job) return setErrors(photoForm, { photo: 'Please choose a photo first.' });
+
+    const btn = $('ph-submit');
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Preparing photo…';
+    try {
+        const photo = await job;
+        btn.textContent = 'Uploading…';
+        const out = await callApi({ action: 'photo', reg_code: r.reg_code, auth_name: r.full_name, auth_church: r.local_church, photo });
+        if (out.ok) {
+            saveMe((loadMe() || []).map((x) => (x.reg_code === out.result.reg_code ? out.result : x)));
+            tabPhoto.reset();
+            renderMe();
+            show($('ph-saved'), out.replaced ? 'Your new ID photo replaced the old one.' : 'Your ID photo was uploaded. Thank you!');
+        } else if (out.errors) {
+            setErrors(photoForm, out.errors);
+        } else {
+            show($('ph-alert'), out.error || 'Something went wrong. Please try again.');
+        }
+    } catch (err) {
+        show($('ph-alert'), 'Could not reach the server. Check your internet connection and try again.');
+    } finally {
+        btn.disabled = false;
+        if (btn.textContent === 'Uploading…' || btn.textContent === 'Preparing photo…') btn.textContent = label;
+        showPhotoTarget();
+    }
+});
 
 // ================= PROGRAM =================
 function renderDay(i) {

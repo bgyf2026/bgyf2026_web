@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <main class="card">
@@ -42,6 +42,7 @@
     <div class="tabs" role="tablist">
         <button type="button" role="tab" id="t-register" aria-selected="true" aria-controls="tab-register">Register</button>
         <button type="button" role="tab" id="t-check" aria-selected="false" aria-controls="tab-check">My registration &amp; program</button>
+        <button type="button" role="tab" id="t-photo" aria-selected="false" aria-controls="tab-photo">ID photo</button>
     </div>
 
     <!-- ============ CHECK REGISTRATION / PROGRAM ============ -->
@@ -55,20 +56,6 @@
             <div id="edit" class="edit" hidden>
                 <h2>Edit profile</h2>
                 <p class="hint left" id="edit-for"></p>
-
-                <form id="unlock" novalidate>
-                    <p class="hint left">To protect your details, enter the email you registered with.</p>
-                    <label class="field">
-                        <span>Registered email</span>
-                        <input type="email" name="auth_email" maxlength="160" autocomplete="email" required>
-                        <small class="err" data-for="auth_email"></small>
-                    </label>
-                    <div class="alert" id="u-alert" hidden role="alert"></div>
-                    <div class="btn-row">
-                        <button class="btn" type="submit" id="u-submit">Continue</button>
-                        <button class="btn ghost" type="button" data-cancel>Cancel</button>
-                    </div>
-                </form>
 
                 <form id="editform" novalidate>
                     <label class="field">
@@ -85,7 +72,7 @@
                         <fieldset class="field">
                             <span>Gender</span>
                             <div class="seg" id="e-gender"></div>
-                            <small class="err" data-for="gender"></small>
+                            <small class="err" data-for="sex"></small>
                         </fieldset>
                     </div>
                     <label class="field">
@@ -137,6 +124,50 @@
         </form>
     </section>
 
+    <!-- ============ ID PHOTO ============ -->
+    <section id="tab-photo" role="tabpanel" aria-labelledby="t-photo" hidden>
+        <h2>ID photo</h2>
+        <p class="hint left">Upload a portrait or selfie for your event ID badge. You can replace it any time before the event.</p>
+
+        <div id="ph-out" class="ph-out">
+            <p>Log in with your name and church first, so we know whose ID this is.</p>
+            <button class="btn" type="button" id="ph-login">Log in</button>
+            <p class="hint">Not registered yet? <button type="button" class="linkbtn" id="ph-register">Register first</button></p>
+        </div>
+
+        <form id="photoform" novalidate hidden>
+            <label class="field" id="ph-who-wrap" hidden>
+                <span>Upload for</span>
+                <select id="ph-who"></select>
+            </label>
+            <div class="ph-for">
+                <b id="ph-name"></b>
+                <span id="ph-code"></span>
+            </div>
+            <p class="photo-status" id="ph-status"></p>
+
+            <div class="field">
+                <span>Your photo</span>
+                <label class="photo-pick" for="photo">
+                    <img class="photo-sample" id="photo-sample" alt="" hidden>
+                    <img class="photo-preview" id="photo-preview" alt="Your ID photo" hidden>
+                    <span class="photo-ph" id="photo-ph">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+                        <b>Take a selfie or choose a photo</b>
+                        <small>JPG or PNG, up to 5 MB</small>
+                    </span>
+                </label>
+                <input type="file" id="photo" name="photo" accept="image/*" class="photo-input">
+                <p class="photo-tips">Face the camera, head and shoulders, plain background. No sunglasses, caps or filters.</p>
+                <small class="err" data-for="photo"></small>
+            </div>
+
+            <div class="alert" id="ph-alert" hidden role="alert"></div>
+            <div class="saved" id="ph-saved" hidden role="status"></div>
+            <button class="btn" type="submit" id="ph-submit">Upload photo</button>
+        </form>
+    </section>
+
     <!-- ============ REGISTER ============ -->
     <section id="tab-register" role="tabpanel" aria-labelledby="t-register">
     <div id="notice" class="notice" hidden></div>
@@ -150,7 +181,8 @@
         <p class="code" id="s-code"></p>
         <p class="hint">Take a screenshot of this page and show it at the registration desk.</p>
         <div class="success-actions">
-            <button class="btn" type="button" id="see-program">View event program</button>
+            <button class="btn" type="button" id="go-photo">Upload your ID photo</button>
+            <button class="btn ghost" type="button" id="see-program">View event program</button>
             <button class="btn ghost" type="button" id="again">Register another person</button>
         </div>
     </div>
@@ -194,14 +226,18 @@
             <select name="local_church" id="church" required>
                 <option value="" selected disabled>Select your church</option>
                 <option>Adiangao</option>
-                <option>Bonbon</option>
+                <option>Bonbon</option> 
+                <option>Bicol Grace Gospel Fellowship</option>
+                <option>Caguscos</option>
+                <option>Cadcad</option>
                 <option>Daraga</option>
                 <option>Garchitorena</option>
                 <option>Guinobatan</option>
+                <option>Jovellar</option>
                 <option>Ligao</option>
                 <option>Mampirao</option>
                 <option>Nogpo</option>
-                <option>San Jose</option>
+                <option>Tabaco</option>
                 <option value="__other">Other (not listed)</option>
             </select>
             <input type="text" name="local_church_other" id="church-other" maxlength="160" placeholder="Type your church" hidden>
@@ -222,7 +258,7 @@
 
         <label class="consent">
             <input type="checkbox" name="consent" value="1">
-            <span>I agree that the organizers may collect and use the information above for this event only, in line with the Data Privacy Act of 2012.</span>
+            <span>I agree that the organizers may collect and use my information and ID photo for this event and my event ID only, in line with the Data Privacy Act of 2012.</span>
         </label>
         <small class="err" data-for="consent"></small>
 
@@ -234,7 +270,7 @@
     </div>
 </main>
 <footer>NO TURNING BACK · BGYF 2026</footer>
-<script src="program.js"></script>
-<script src="app.js"></script>
+<script src="program.js?v=7"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
