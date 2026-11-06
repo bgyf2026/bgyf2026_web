@@ -9,6 +9,8 @@ const lookupForm = $('lookup');
 const STORE_KEY = 'bgyf2026_me';
 const PHOTO_MAX_BYTES = 5 * 1024 * 1024;  // 5 MB
 const PHOTO_MAX_SIDE = 1600;              // px; plenty for a printed ID, much faster to upload
+const REG_FEE = 400;                      // PHP per registrant; keep the same as REG_FEE in Code.gs
+const MAX_GROUP = 30;                     // most registrants in one multiple payment
 
 // ---------- small helpers ----------
 function show(el, text) {
@@ -129,11 +131,11 @@ function setPhotoImg(img, r, onState) {
 
 // Checks the size, shows a preview, and prepares the upload in the background:
 // large photos are scaled to 1600 px JPEG so they upload quickly on mobile data.
-function photoPicker(inputId, previewId, phId) {
+function photoPicker(inputId, previewId, phId, errName = 'photo', noun = 'photo') {
     const input = $(inputId);
     const img = $(previewId);
     const ph = $(phId);
-    const slot = input.form.querySelector('.err[data-for="photo"]');
+    const slot = input.form.querySelector(`.err[data-for="${errName}"]`);
     let job = null;
     let url = null;
 
@@ -163,12 +165,12 @@ function photoPicker(inputId, previewId, phId) {
         const isImage = /^image\//.test(f.type) || /\.(heic|heif)$/i.test(f.name);
         if (!isImage) {
             reset();
-            slot.textContent = 'Please choose a photo (JPG or PNG).';
+            slot.textContent = `Please choose ${noun === 'photo' ? 'a photo' : 'an image'} (JPG or PNG).`;
             return;
         }
         if (f.size > PHOTO_MAX_BYTES) {
             reset();
-            slot.textContent = `This photo is ${(f.size / 1048576).toFixed(1)} MB. Please choose one up to 5 MB.`;
+            slot.textContent = `This ${noun} is ${(f.size / 1048576).toFixed(1)} MB. Please choose one up to 5 MB.`;
             return;
         }
         if (url) URL.revokeObjectURL(url);
@@ -228,6 +230,7 @@ const tabs = {
     register: [$('t-register'), $('tab-register')],
     check: [$('t-check'), $('tab-check')],
     photo: [$('t-photo'), $('tab-photo')],
+    pay: [$('t-pay'), $('tab-pay')],
 };
 function openTab(name) {
     for (const [key, [btn, panel]] of Object.entries(tabs)) {
@@ -239,6 +242,7 @@ function openTab(name) {
 $('t-register').addEventListener('click', () => openTab('register'));
 $('t-check').addEventListener('click', () => openTab('check'));
 $('t-photo').addEventListener('click', () => openTab('photo'));
+$('t-pay').addEventListener('click', () => openTab('pay'));
 let afterLogin = null; // tab to return to after logging in
 
 // ================= REGISTER =================
@@ -483,8 +487,16 @@ editForm.addEventListener('submit', async (ev) => {
     }
 });
 
+function payLabel(st) {
+    if (st === 'Verified') return 'Paid';
+    if (st === 'Pending') return 'Pending verification';
+    if (st === 'Rejected') return 'Not accepted, please pay again';
+    return 'Not paid';
+}
+
 function renderMe() {
     renderPhotoTab();
+    prefillPayCodes();
     const me = loadMe();
     const cards = $('me-cards');
     cards.replaceChildren();
@@ -513,9 +525,10 @@ function renderMe() {
         c.append(el('p', 'pass-name', r.full_name));
         c.append(el('p', 'code', r.reg_code));
         const dl = el('dl', 'pass-meta');
-        [['Church', r.local_church], ['Role', r.role], ['Registered', r.registered_at], ['ID photo', r.has_photo ? 'Uploaded' : 'Missing']].forEach(([k, v]) => {
+        [['Church', r.local_church], ['Role', r.role], ['Registered', r.registered_at], ['ID photo', r.has_photo ? 'Uploaded' : 'Missing'], ['Payment', payLabel(r.payment)]].forEach(([k, v]) => {
             const d = el('div');
-            d.append(el('dt', '', k), el('dd', k === 'ID photo' && !r.has_photo ? 'missing' : '', v));
+            const warn = (k === 'ID photo' && !r.has_photo) || (k === 'Payment' && r.payment !== 'Verified');
+            d.append(el('dt', '', k), el('dd', (warn ? 'missing' : '') + (k === 'Payment' && r.payment === 'Verified' ? ' paid' : ''), v));
             dl.append(d);
         });
         c.append(dl);
@@ -528,6 +541,12 @@ function renderMe() {
             photoBtn.type = 'button';
             photoBtn.addEventListener('click', () => openTab('photo'));
             actions.append(photoBtn);
+        }
+        if (r.payment !== 'Verified' && r.payment !== 'Pending') {
+            const payBtn = el('button', 'btn small-dark accent', `Pay ₱${REG_FEE}`);
+            payBtn.type = 'button';
+            payBtn.addEventListener('click', () => openTab('pay'));
+            actions.append(payBtn);
         }
         actions.append(editBtn);
         c.append(actions);
@@ -700,8 +719,6 @@ function initProgram() {
     renderDay(diff >= 0 && diff < PROGRAM.length ? diff : 0);
 }
 
-initProgram();
-renderMe();
 
 // Check whether registration is still open
 fetch(SCRIPT_URL)
@@ -713,3 +730,147 @@ fetch(SCRIPT_URL)
         }
     })
     .catch(() => {});
+
+// ================= PAYMENT TAB =================
+const payForm = $('payform');
+const payCodes = $('pay-codes');
+const payCount = $('pay-count');
+const payReceipt = photoPicker('pay-receipt', 'pay-preview', 'pay-ph', 'receipt', 'receipt');
+const peso = (n) => '₱' + n.toLocaleString('en-PH');
+
+function payType() {
+    return payForm.querySelector('[name=pay_type]:checked').value;
+}
+
+function payN() {
+    if (payType() === 'single') return 1;
+    const n = Math.floor(Number(payCount.value));
+    return n >= 2 && n <= MAX_GROUP ? n : 0;
+}
+
+function renderPayCodes() {
+    const n = payN() || (payType() === 'single' ? 1 : 2);
+    const keep = [...payCodes.querySelectorAll('input')].map((i) => i.value);
+    const keepAuto = payCodes.querySelector('input')?.dataset.auto === '1';
+    payCodes.replaceChildren();
+    for (let i = 0; i < n; i++) {
+        const inp = el('input');
+        inp.type = 'text';
+        inp.name = 'codes';
+        inp.inputMode = 'numeric';
+        inp.maxLength = 12;
+        inp.autocomplete = 'off';
+        inp.placeholder = n > 1 ? `Code of registrant ${i + 1}` : 'e.g. 482915';
+        inp.setAttribute('aria-label', n > 1 ? `Registration code ${i + 1}` : 'Registration code');
+        inp.value = keep[i] || '';
+        if (i === 0 && keepAuto) inp.dataset.auto = '1';
+        payCodes.append(inp);
+    }
+    payCodes.classList.toggle('many', n > 1);
+    $('pay-codes-label').textContent = n > 1 ? 'Registration codes' : 'Registration code';
+    $('pay-codes-hint').textContent = n > 1
+        ? 'Enter the 6-digit code from each person\'s pass card. Each person must register first.'
+        : 'The 6-digit code on the pass card.';
+    prefillPayCodes();
+    updateDue();
+}
+
+/** Puts the logged-in person's code in the first box, unless the person typed something there. */
+function prefillPayCodes() {
+    const first = payCodes.querySelector('input');
+    if (!first || (first.value && first.dataset.auto !== '1')) return;
+    const mine = (loadMe() || []).find((r) => r.payment !== 'Verified' && r.payment !== 'Pending');
+    first.value = mine ? String(mine.reg_code) : '';
+    first.dataset.auto = mine ? '1' : '';
+    if (!first.dataset.watch) {
+        first.dataset.watch = '1';
+        first.addEventListener('input', () => { first.dataset.auto = ''; });
+    }
+}
+
+function updateDue() {
+    const n = payN();
+    $('pay-due').textContent = n ? peso(REG_FEE * n) : '—';
+    $('pay-due-note').textContent = n ? `${n} registrant${n > 1 ? 's' : ''} × ${peso(REG_FEE)}` : `Enter 2 to ${MAX_GROUP} registrants`;
+}
+
+payForm.querySelectorAll('[name=pay_type]').forEach((r) => r.addEventListener('change', () => {
+    $('pay-count-wrap').hidden = payType() === 'single';
+    clearErrors(payForm, $('pay-alert'));
+    renderPayCodes();
+}));
+payCount.addEventListener('input', () => {
+    updateDue();
+    if (payN()) renderPayCodes();
+});
+
+payForm.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    clearErrors(payForm, $('pay-alert'));
+    const multiple = payType() === 'multiple';
+    const n = payN();
+    const codes = [...payCodes.querySelectorAll('input')].map((i) => i.value.replace(/\s+/g, '').toUpperCase());
+    const ref = $('pay-ref').value.replace(/[\s-]/g, '').toUpperCase();
+    const job = payReceipt.get();
+    const errs = {};
+    if (multiple && !n) errs.count = `Enter the number of registrants (2 to ${MAX_GROUP}).`;
+    else if (codes.some((c) => !c)) errs.codes = n > 1 ? 'Please enter a registration code for every registrant.' : 'Please enter your registration code.';
+    else {
+        const twice = codes.find((c, i) => codes.indexOf(c) !== i);
+        if (twice) errs.codes = `Code ${twice} is entered more than once.`;
+    }
+    if (!job) errs.receipt = 'Please upload a screenshot of your GCash receipt.';
+    if (!/^[0-9A-Z]{6,20}$/.test(ref)) errs.ref = 'Enter the Reference No. exactly as it appears on your receipt.';
+    if (Object.keys(errs).length) return setErrors(payForm, errs);
+
+    const btn = $('pay-submit');
+    btn.disabled = true;
+    btn.textContent = 'Preparing receipt…';
+    try {
+        const receipt = await job;
+        btn.textContent = 'Sending…';
+        const out = await callApi({ action: 'pay', pay_type: multiple ? 'multiple' : 'single', count: n, codes, ref, receipt });
+        if (out.ok) {
+            $('pd-ref').textContent = out.ref;
+            $('pd-amount').textContent = peso(out.amount);
+            const list = $('pd-people');
+            list.replaceChildren();
+            out.people.forEach((p) => {
+                const li = el('li');
+                li.append(el('b', '', p.full_name), el('span', '', p.reg_code));
+                list.append(li);
+            });
+            const paid = new Set(out.people.map((p) => String(p.reg_code)));
+            saveMe((loadMe() || []).map((r) => (paid.has(String(r.reg_code)) ? Object.assign({}, r, { payment: 'Pending' }) : r)));
+            renderMe();
+            hide(payForm);
+            show($('pay-done'));
+            $('tab-pay').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (out.errors) {
+            setErrors(payForm, out.errors);
+        } else {
+            show($('pay-alert'), out.error || 'Something went wrong. Please try again.');
+        }
+    } catch (err) {
+        show($('pay-alert'), 'Could not reach the server. Check your internet connection and try again.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Submit payment';
+    }
+});
+
+$('pay-again').addEventListener('click', () => {
+    payForm.reset();
+    payReceipt.reset();
+    payCodes.replaceChildren();
+    $('pay-count-wrap').hidden = true;
+    hide($('pay-done'));
+    show(payForm);
+    renderPayCodes();
+});
+
+renderPayCodes();
+
+// ---------- start ----------
+initProgram();
+renderMe();

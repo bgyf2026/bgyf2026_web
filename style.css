@@ -206,7 +206,7 @@ footer { max-width: 580px; margin: 18px auto 0; text-align: center; color: rgba(
 /* ---------- Tabs ---------- */
 .tabs {
     display: grid;
-    grid-template-columns: 1fr 1.35fr .9fr;
+    grid-template-columns: repeat(4, auto);
     gap: 4px;
     padding: 4px;
     margin-bottom: 22px;
@@ -501,3 +501,90 @@ footer { max-width: 580px; margin: 18px auto 0; text-align: center; color: rgba(
 .pass-avatar.loading img { opacity: .5; }
 .pass-avatar span[hidden] { display: none; }
 .photo-pick.current .photo-sample { opacity: 1; }
+
+
+/* ---------- Four tabs: 2 x 2 on phones ---------- */
+@media (max-width: 480px) {
+    .tabs { grid-template-columns: 1fr 1fr; }
+}
+
+/* ---------- Payment tab ---------- */
+#tab-pay h2 { margin-bottom: 4px; }
+.gcash {
+    display: grid;
+    gap: 12px;
+    margin: 16px 0 20px;
+    padding: 16px;
+    border-radius: 14px;
+    background: #0a5fde;
+    color: #fff;
+}
+.gcash img {
+    width: 100%;
+    max-width: 300px;
+    height: auto;
+    margin: 0 auto;
+    display: block;
+    border-radius: 12px;
+    background: #fff;
+}
+.gcash dl { display: grid; gap: 8px; margin: 0; }
+.gcash dl div { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.gcash dt { font-size: .78rem; text-transform: uppercase; letter-spacing: .1em; opacity: .8; }
+.gcash dd { margin: 0; font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 8px; }
+.gcash .hint { color: rgba(255, 255, 255, .85); margin: 0; }
+.copy {
+    font: inherit;
+    font-size: .78rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(255, 255, 255, .7);
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+}
+.copy:hover { background: rgba(255, 255, 255, .15); }
+
+.codes { display: grid; gap: 8px; }
+.codes.many { grid-template-columns: 1fr 1fr; }
+.codes input { font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+
+.due {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
+    gap: 0 12px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: var(--asphalt);
+    color: var(--cream);
+}
+.due span { font-weight: 600; }
+.due b { font-size: 1.6rem; color: var(--orange-2); font-variant-numeric: tabular-nums; }
+.due small { grid-column: 1 / -1; color: rgba(246, 241, 221, .65); font-size: .82rem; }
+
+.receipt-pick { width: 100%; max-width: 220px; aspect-ratio: 9 / 16; }
+.receipt-pick .photo-preview { object-fit: contain; background: #fff; }
+
+.pay-done {
+    margin-top: 4px;
+    padding: 20px 18px;
+    border-radius: 14px;
+    background: var(--asphalt);
+    color: var(--cream);
+    text-align: center;
+}
+.pay-done .kicker { margin: 0; color: var(--orange-2); font-weight: 700; letter-spacing: .2em; text-transform: uppercase; font-size: .72rem; }
+.pay-done h2 { margin: 4px 0 8px; }
+.pay-done p { margin: 0 0 14px; color: rgba(246, 241, 221, .8); font-size: .92rem; }
+.pay-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 12px; text-align: left; }
+.pay-summary dt { font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; color: rgba(246, 241, 221, .55); }
+.pay-summary dd { margin: 2px 0 0; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pay-people { list-style: none; margin: 0 0 16px; padding: 0; text-align: left; border-top: 1px solid rgba(246, 241, 221, .15); }
+.pay-people li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(246, 241, 221, .15); font-size: .92rem; }
+.pay-people span { font-family: ui-monospace, Menlo, Consolas, monospace; color: rgba(246, 241, 221, .7); }
+.pay-done .btn.ghost { color: var(--cream); border-color: rgba(246, 241, 221, .5); }
+.pass-meta dd.paid { color: #7fd6a3; }
+
+.save-qr { justify-self: center; text-decoration: none; padding: 8px 16px; font-size: .88rem; }
