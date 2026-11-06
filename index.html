@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <main class="card">
@@ -167,6 +167,19 @@
             <div class="saved" id="ph-saved" hidden role="status"></div>
             <button class="btn" type="submit" id="ph-submit">Upload photo</button>
         </form>
+
+        <div class="badge-box" id="badge-box" hidden>
+            <h2>Event badge</h2>
+            <p class="hint left">Your ID badge with your photo, name, church, role and registration no. It is made on this phone and is not saved online. Size: 2.25 &times; 3.5 in.</p>
+            <p class="photo-status missing" id="badge-need" hidden>Upload your ID photo first to make your badge.</p>
+            <button class="btn" type="button" id="badge-make">Make my event badge</button>
+            <div class="badge-out" id="badge-out" hidden>
+                <img id="badge-img" alt="Your event badge">
+                <a class="btn" id="badge-dl" download>Download PNG</a>
+                <p class="hint">On iPhone, if the download doesn't start, press and hold the badge and tap <b>Save to Photos</b>.</p>
+            </div>
+            <div class="alert" id="badge-alert" hidden role="alert"></div>
+        </div>
     </section>
 
     <!-- ============ PAYMENT ============ -->
@@ -353,7 +366,7 @@
     </div>
 </main>
 <footer>NO TURNING BACK · BGYF 2026</footer>
-<script src="program.js?v=10"></script>
-<script src="app.js?v=10"></script>
+<script src="program.js?v=11"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
