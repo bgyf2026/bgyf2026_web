@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin · No Turning Back · BGYF 2026</title>
+<meta name="theme-color" content="#1c1c1c">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="admin.css?v=1">
+</head>
+<body class="admin">
+
+<!-- ============ LOGIN ============ -->
+<main class="card adm-login" id="login">
+    <div class="content">
+        <p class="org">BGYF 2026 · No Turning Back</p>
+        <h1>Admin</h1>
+        <p class="hint left">Registration statistics and event badges. For organizers only.</p>
+        <form id="login-form" novalidate>
+            <label class="field">
+                <span>Admin password</span>
+                <input type="password" name="password" id="pw" autocomplete="current-password" required>
+            </label>
+            <div class="alert" id="login-alert" hidden role="alert"></div>
+            <button class="btn" type="submit" id="login-btn">Log in</button>
+        </form>
+    </div>
+</main>
+
+<!-- ============ DASHBOARD ============ -->
+<div class="adm" id="dash" hidden>
+    <header class="adm-bar">
+        <div>
+            <p class="org">BGYF 2026 · No Turning Back</p>
+            <h1>Registration dashboard</h1>
+            <p class="adm-updated" id="updated"></p>
+        </div>
+        <div class="adm-actions">
+            <button class="btn small-btn" type="button" id="refresh">Refresh</button>
+            <button class="btn ghost small-btn" type="button" id="logout">Log out</button>
+        </div>
+    </header>
+
+    <!-- headline numbers -->
+    <section class="kpis" id="kpis" aria-label="Summary"></section>
+
+    <!-- breakdowns -->
+    <section class="adm-grid">
+        <article class="panel">
+            <h2>By role</h2>
+            <div class="bars" id="by-role"></div>
+        </article>
+        <article class="panel">
+            <h2>By age group</h2>
+            <p class="panel-note">Groups match the lecture sessions in the program.</p>
+            <div class="bars" id="by-age"></div>
+        </article>
+        <article class="panel">
+            <h2>By sex</h2>
+            <div class="bars" id="by-sex"></div>
+        </article>
+        <article class="panel">
+            <h2>Payment</h2>
+            <div class="bars" id="by-pay"></div>
+            <p class="panel-note" id="pay-note"></p>
+        </article>
+        <article class="panel wide">
+            <h2>By local church</h2>
+            <div class="bars" id="by-church"></div>
+        </article>
+        <article class="panel wide">
+            <h2>Registrations per day</h2>
+            <div class="days" id="by-day"></div>
+        </article>
+    </section>
+
+    <!-- registrant list -->
+    <section class="panel list-panel" aria-labelledby="list-h">
+        <div class="list-head">
+            <h2 id="list-h">Registrants</h2>
+            <p class="panel-note" id="list-count"></p>
+        </div>
+
+        <div class="filters">
+            <input type="search" id="f-q" placeholder="Search name, code, church or email" aria-label="Search">
+            <select id="f-role" aria-label="Role"><option value="">All roles</option></select>
+            <select id="f-church" aria-label="Church"><option value="">All churches</option></select>
+            <select id="f-pay" aria-label="Payment">
+                <option value="">Any payment</option>
+                <option value="Verified">Paid</option>
+                <option value="Pending">Pending verification</option>
+                <option value="none">Not paid</option>
+                <option value="Rejected">Rejected</option>
+            </select>
+            <select id="f-photo" aria-label="Photo">
+                <option value="">Any photo</option>
+                <option value="yes">With photo</option>
+                <option value="no">No photo</option>
+            </select>
+        </div>
+
+        <div class="bulk">
+            <div>
+                <b>Badges for the registrants shown below</b>
+                <label class="check"><input type="checkbox" id="use-sample"> Include people without a photo (uses the sample photo)</label>
+            </div>
+            <div class="bulk-btns">
+                <button class="btn small-btn" type="button" id="zip-btn">Download all as ZIP</button>
+                <button class="btn ghost small-btn" type="button" id="print-btn">Print sheet (9 per page)</button>
+            </div>
+            <p class="bulk-status" id="bulk-status" aria-live="polite"></p>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Code</th><th>Name</th><th>Church</th><th>Role</th><th>Age</th><th>Sex</th><th>Photo</th><th>Payment</th><th></th></tr>
+                </thead>
+                <tbody id="rows"></tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<!-- single badge preview -->
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-h">
+    <div class="modal-card">
+        <h2 id="modal-h">Event badge</h2>
+        <img id="modal-img" alt="">
+        <div class="modal-btns">
+            <a class="btn" id="modal-dl" download>Download PNG</a>
+            <button class="btn ghost" type="button" id="modal-close">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- print sheet (only visible when printing) -->
+<div id="print-sheet" aria-hidden="true"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="config.js?v=12"></script>
+<script src="badge.js?v=12"></script>
+<script src="admin.js?v=1"></script>
+</body>
+</html>
