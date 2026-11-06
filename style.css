@@ -604,3 +604,10 @@ footer { max-width: 580px; margin: 18px auto 0; text-align: center; color: rgba(
     background: var(--cream-2);
 }
 .badge-out .btn { text-decoration: none; }
+
+/* ---------- Team on the pass card ---------- */
+.pass-meta dd.team::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; background: currentColor; vertical-align: 0; }
+.pass-meta dd.team-red { color: #ff8a80; }
+.pass-meta dd.team-blue { color: #82b1ff; }
+.pass-meta dd.team-yellow { color: #f6cb4c; }
+.pass-meta dd.team-green { color: #7fd6a3; }

@@ -10,8 +10,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=12">
-<link rel="stylesheet" href="admin.css?v=1">
+<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="admin.css?v=2">
 </head>
 <body class="admin">
 
@@ -48,6 +48,25 @@
 
     <!-- headline numbers -->
     <section class="kpis" id="kpis" aria-label="Summary"></section>
+
+    <!-- Youth Delegate teams -->
+    <section class="panel teams-panel" aria-labelledby="teams-h">
+        <div class="list-head">
+            <h2 id="teams-h">Youth Delegate teams</h2>
+            <p class="panel-note" id="teams-note"></p>
+        </div>
+        <div class="team-tiles" id="team-tiles"></div>
+        <div class="team-actions">
+            <button class="btn small-btn" type="button" id="assign-new">Assign delegates without a team</button>
+            <button class="btn ghost small-btn" type="button" id="assign-all">Reshuffle all teams</button>
+            <label class="switch">
+                <input type="checkbox" id="teams-visible">
+                <span>Show teams to delegates (pass card and badge)</span>
+            </label>
+        </div>
+        <p class="panel-note team-help">Assigning keeps teams the same size and mixes boys and girls, ages and churches. Change anyone's team in the list below; reshuffling replaces every team, including your changes.</p>
+        <p class="bulk-status team-status" id="team-status" aria-live="polite"></p>
+    </section>
 
     <!-- breakdowns -->
     <section class="adm-grid">
@@ -97,6 +116,14 @@
                 <option value="none">Not paid</option>
                 <option value="Rejected">Rejected</option>
             </select>
+            <select id="f-team" aria-label="Team">
+                <option value="">Any team</option>
+                <option value="Red">Red team</option>
+                <option value="Blue">Blue team</option>
+                <option value="Yellow">Yellow team</option>
+                <option value="Green">Green team</option>
+                <option value="none">Youth Delegates without a team</option>
+            </select>
             <select id="f-photo" aria-label="Photo">
                 <option value="">Any photo</option>
                 <option value="yes">With photo</option>
@@ -119,7 +146,7 @@
         <div class="table-wrap">
             <table>
                 <thead>
-                    <tr><th>Code</th><th>Name</th><th>Church</th><th>Role</th><th>Age</th><th>Sex</th><th>Photo</th><th>Payment</th><th></th></tr>
+                    <tr><th>Code</th><th>Name</th><th>Church</th><th>Role</th><th>Team</th><th>Age</th><th>Sex</th><th>Photo</th><th>Payment</th><th></th></tr>
                 </thead>
                 <tbody id="rows"></tbody>
             </table>
@@ -143,8 +170,8 @@
 <div id="print-sheet" aria-hidden="true"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="config.js?v=12"></script>
-<script src="badge.js?v=12"></script>
-<script src="admin.js?v=1"></script>
+<script src="config.js?v=13"></script>
+<script src="badge.js?v=13"></script>
+<script src="admin.js?v=2"></script>
 </body>
 </html>

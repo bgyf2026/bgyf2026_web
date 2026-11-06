@@ -522,10 +522,10 @@ function renderMe() {
         c.append(el('p', 'pass-name', r.full_name));
         c.append(el('p', 'code', r.reg_code));
         const dl = el('dl', 'pass-meta');
-        [['Church', r.local_church], ['Role', r.role], ['Registered', r.registered_at], ['ID photo', r.has_photo ? 'Uploaded' : 'Missing'], ['Payment', payLabel(r.payment)]].forEach(([k, v]) => {
+        [['Church', r.local_church], ['Role', r.role], ['Registered', r.registered_at], ['ID photo', r.has_photo ? 'Uploaded' : 'Missing'], ['Payment', payLabel(r.payment)]].concat(r.team ? [['Team', `${r.team} team`]] : []).forEach(([k, v]) => {
             const d = el('div');
             const warn = (k === 'ID photo' && !r.has_photo) || (k === 'Payment' && r.payment !== 'Verified');
-            d.append(el('dt', '', k), el('dd', (warn ? 'missing' : '') + (k === 'Payment' && r.payment === 'Verified' ? ' paid' : ''), v));
+            d.append(el('dt', '', k), el('dd', (warn ? 'missing' : '') + (k === 'Payment' && r.payment === 'Verified' ? ' paid' : '') + (k === 'Team' ? ' team team-' + String(r.team).toLowerCase() : ''), v));
             dl.append(d);
         });
         c.append(dl);
@@ -928,6 +928,25 @@ $('badge-make').addEventListener('click', async () => {
     }
 });
 
+/** Quietly reloads saved logins so payment, photo and team are up to date. */
+async function refreshMe() {
+    const me = loadMe() || [];
+    if (!me.length) return;
+    const pairs = [...new Map(me.map((r) => [`${r.full_name}|${r.local_church}`.toLowerCase(), r])).values()];
+    try {
+        const fresh = [];
+        for (const r of pairs) {
+            const out = await callApi({ action: 'lookup', full_name: r.full_name, local_church: r.local_church });
+            if (out.ok) fresh.push(...out.results);
+        }
+        if (!fresh.length || !loadMe()) return;
+        const byCode = new Map(fresh.map((x) => [String(x.reg_code), x]));
+        saveMe(me.map((r) => byCode.get(String(r.reg_code)) || r));
+        renderMe();
+    } catch (e) { /* offline: keep what is saved */ }
+}
+
 // ---------- start ----------
 initProgram();
 renderMe();
+refreshMe();

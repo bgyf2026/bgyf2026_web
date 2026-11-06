@@ -5,6 +5,8 @@ const $ = (id) => document.getElementById(id);
 const PW_KEY = 'bgyf2026_admin_pw';   // kept for this browser tab only (sessionStorage)
 const ROLES = ['Youth Delegate', 'Pastor', 'BGYF Officer', 'Workers', 'Church Member/Volunteer'];
 const SAMPLE_PHOTOS = { Male: 'assets/avatar-male.jpg', Female: 'assets/avatar-female.jpg' };
+const TEAMS = ['Red', 'Blue', 'Yellow', 'Green'];
+const TEAM_ROLE = 'Youth Delegate';
 
 let DATA = null;
 let password = '';
@@ -177,8 +179,78 @@ function render() {
     bars('by-church', [...byChurch.values()].sort((a, b) => b.n - a.n || a.label.localeCompare(b.label)), total);
 
     renderDays(R);
+    renderTeams();
     fillFilters(R);
     renderTable();
+}
+
+// ---------- teams ----------
+function renderTeams() {
+    const dels = DATA.registrants.filter((r) => r.role === TEAM_ROLE);
+    const none = dels.filter((r) => !r.team).length;
+    const box = $('team-tiles');
+    box.replaceChildren();
+    const sizes = TEAMS.map((t) => dels.filter((r) => r.team === t).length);
+    TEAMS.forEach((t, i) => {
+        const members = dels.filter((r) => r.team === t);
+        const tile = el('div', 'team-tile team-' + t.toLowerCase());
+        tile.append(el('span', 'team-name', `${t} team`), el('b', 'kpi-val', String(sizes[i])));
+        const m = members.filter((r) => r.sex === 'Male').length;
+        tile.append(el('span', 'kpi-sub', members.length ? `${m} male · ${members.length - m} female` : 'No one yet'));
+        box.append(tile);
+    });
+    const spread = Math.max(...sizes) - Math.min(...sizes);
+    $('teams-note').textContent = `${dels.length} Youth Delegates · ${none ? `${none} without a team` : 'everyone has a team'}`
+        + (dels.length - none && spread > 1 ? ` · team sizes differ by ${spread}` : '');
+    $('assign-new').disabled = !none;
+    $('assign-all').disabled = !dels.length;
+    $('teams-visible').checked = !!DATA.teams_visible;
+}
+
+async function teamOp(payload, btn, busyText, doneText) {
+    const label = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = busyText; }
+    $('team-status').textContent = '';
+    try {
+        const out = await api(payload);
+        if (!out.ok) throw new Error(out.error || 'failed');
+        DATA = Object.assign(DATA, out);
+        render();
+        $('team-status').textContent = doneText;
+    } catch (err) {
+        $('team-status').textContent = err.message && err.message !== 'failed' ? err.message : 'Could not save. Check your internet connection and try again.';
+        renderTeams();
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = label; renderTeams(); }
+    }
+}
+
+$('assign-new').addEventListener('click', () => teamOp({ op: 'assign', mode: 'unassigned' }, $('assign-new'), 'Assigning…', 'Delegates without a team were added to the smallest teams.'));
+$('assign-all').addEventListener('click', () => {
+    if (!confirm('Reshuffle all teams? Every Youth Delegate gets a new team, including anyone you moved by hand.')) return;
+    teamOp({ op: 'assign', mode: 'all' }, $('assign-all'), 'Reshuffling…', 'All teams were reshuffled into equal sizes.');
+});
+$('teams-visible').addEventListener('change', (e) => {
+    const on = e.target.checked;
+    teamOp({ op: 'teams_visible', visible: on }, null, '', on ? 'Teams are now shown to delegates.' : 'Teams are now hidden from delegates.');
+});
+
+async function setTeam(r, select) {
+    const before = r.team;
+    select.disabled = true;
+    try {
+        const out = await api({ op: 'set_team', reg_code: r.reg_code, team: select.value });
+        if (!out.ok) throw new Error(out.error || 'failed');
+        r.team = out.team;
+        renderTeams();
+        $('team-status').textContent = `${r.full_name} is now ${r.team ? 'in the ' + r.team + ' team' : 'without a team'}.`;
+        select.className = 'team-select' + (r.team ? ' team-' + r.team.toLowerCase() : '');
+    } catch (err) {
+        select.value = before;
+        $('team-status').textContent = `Could not change ${r.full_name}'s team. Check your internet connection.`;
+    } finally {
+        select.disabled = false;
+    }
 }
 
 /** Column chart of registrations per day, from the first registration to the last. */
@@ -238,12 +310,14 @@ function shown() {
     const church = $('f-church').value;
     const pay = $('f-pay').value;
     const photo = $('f-photo').value;
+    const team = $('f-team').value;
     return DATA.registrants
         .filter((r) => !q || [r.full_name, r.reg_code, r.local_church, r.email].join(' ').toLowerCase().includes(q))
         .filter((r) => !role || r.role === role)
         .filter((r) => !church || r.local_church.trim() === church)
         .filter((r) => !pay || (pay === 'none' ? !r.payment : r.payment === pay))
         .filter((r) => !photo || (photo === 'yes' ? r.has_photo : !r.has_photo))
+        .filter((r) => !team || (team === 'none' ? r.role === TEAM_ROLE && !r.team : r.team === team))
         .sort((a, b) => a.full_name.localeCompare(b.full_name));
 }
 
@@ -255,7 +329,7 @@ function renderTable() {
     if (!list.length) {
         const tr = el('tr');
         const td = el('td', 'empty', 'No registrants match these filters.');
-        td.colSpan = 9;
+        td.colSpan = 10;
         tr.append(td);
         body.append(tr);
     }
@@ -268,8 +342,21 @@ function renderTable() {
         btn.disabled = !r.has_photo && !$('use-sample').checked;
         btn.title = btn.disabled ? 'No photo yet. Tick "Include people without a photo" to use the sample.' : 'Make this badge';
         btn.addEventListener('click', () => oneBadge(r, btn));
-        const cells = [r.reg_code, r.full_name, r.local_church, r.role, r.age || '', r.sex];
-        cells.forEach((v, i) => tr.append(el('td', i === 0 ? 'mono' : '', String(v))));
+        [r.reg_code, r.full_name, r.local_church, r.role].forEach((v, i) => tr.append(el('td', i === 0 ? 'mono' : '', String(v))));
+        const tdTeam = el('td');
+        if (r.role === TEAM_ROLE) {
+            const sel = el('select', 'team-select' + (r.team ? ' team-' + r.team.toLowerCase() : ''));
+            sel.setAttribute('aria-label', `Team for ${r.full_name}`);
+            sel.add(new Option('No team', ''));
+            TEAMS.forEach((t) => sel.add(new Option(t, t)));
+            sel.value = r.team || '';
+            sel.addEventListener('change', () => setTeam(r, sel));
+            tdTeam.append(sel);
+        } else {
+            tdTeam.append(el('span', 'muted-dash', '—'));
+        }
+        tr.append(tdTeam);
+        [r.age || '', r.sex].forEach((v) => tr.append(el('td', '', String(v))));
         [ph, pay].forEach((p) => { const td = el('td'); td.append(p); tr.append(td); });
         const td = el('td');
         td.append(btn);
@@ -278,7 +365,7 @@ function renderTable() {
     });
 }
 
-['f-q', 'f-role', 'f-church', 'f-pay', 'f-photo'].forEach((id) => $(id).addEventListener('input', renderTable));
+['f-q', 'f-role', 'f-church', 'f-pay', 'f-team', 'f-photo'].forEach((id) => $(id).addEventListener('input', renderTable));
 $('use-sample').addEventListener('change', renderTable);
 
 // ---------- badges ----------

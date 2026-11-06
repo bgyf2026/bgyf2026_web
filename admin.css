@@ -96,7 +96,7 @@
 /* registrant list */
 .list-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .list-head .panel-note { margin: 0; }
-.filters { display: grid; grid-template-columns: 2fr repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+.filters { display: grid; grid-template-columns: 2fr repeat(5, 1fr); gap: 8px; margin: 12px 0; }
 .filters input, .filters select {
     width: 100%;
     font: inherit;
@@ -182,3 +182,39 @@ td .linkbtn:disabled { color: var(--line); cursor: not-allowed; }
     .print-page img { width: 2.25in; height: 3.5in; display: block; outline: 0.5pt dashed #bbb; }
 }
 .bars + .panel-note { margin: 12px 0 0; }
+
+/* ---------- Youth Delegate teams ---------- */
+.team-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.team-tile { display: grid; gap: 2px; padding: 12px 14px; border-radius: 12px; background: var(--cream-2); border-left: 6px solid var(--line); }
+.team-name { font-weight: 700; font-size: .9rem; }
+.team-tile.team-red { border-left-color: #c62828; }
+.team-tile.team-blue { border-left-color: #1565c0; }
+.team-tile.team-yellow { border-left-color: #f6c624; }
+.team-tile.team-green { border-left-color: #2e7d32; }
+.team-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; font-size: .9rem; font-weight: 600; cursor: pointer; }
+.switch input { width: 18px; height: 18px; accent-color: var(--orange); }
+.team-help { margin: 10px 0 0; }
+.team-status { color: #8a5d00; margin-top: 6px; }
+.teams-panel .list-head .panel-note { margin: 0; }
+
+.team-select {
+    font: inherit;
+    font-size: .84rem;
+    padding: 4px 28px 4px 10px;
+    border: 1.5px solid var(--line);
+    border-radius: 999px;
+    background-color: var(--cream-2);
+    background-position: right 8px center;
+    min-width: 104px;
+}
+.team-select.team-red { border-color: #c62828; color: #a51f1f; font-weight: 700; }
+.team-select.team-blue { border-color: #1565c0; color: #1255a3; font-weight: 700; }
+.team-select.team-yellow { border-color: #e0b000; color: #7a5c00; font-weight: 700; }
+.team-select.team-green { border-color: #2e7d32; color: #246628; font-weight: 700; }
+.muted-dash { color: var(--line); }
+
+@media (max-width: 760px) {
+    .team-tiles { grid-template-columns: 1fr 1fr; }
+    .switch { margin-left: 0; }
+}

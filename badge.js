@@ -2,12 +2,19 @@
 // 2.25 x 3.5 in at 300 dpi = 675 x 1050 px, drawn in the browser.
 const BADGE_W = 675;
 const BADGE_H = 1050;
+// Role bands avoid red, blue, yellow and green: those are the Youth Delegate team colours.
 const ROLE_COLORS = {
     'Youth Delegate': ['#ee7a22', '#1c1c1c'],
     'Pastor': ['#1c1c1c', '#f6cb4c'],
-    'BGYF Officer': ['#b8321f', '#f6f1dd'],
-    'Workers': ['#1f4e79', '#f6f1dd'],
-    'Church Member/Volunteer': ['#2e7d4f', '#f6f1dd'],
+    'BGYF Officer': ['#6a3d9a', '#f6f1dd'],
+    'Workers': ['#7a4a1f', '#f6f1dd'],
+    'Church Member/Volunteer': ['#5f6b73', '#f6f1dd'],
+};
+const TEAM_COLORS = {
+    Red: ['#c62828', '#fffaf0'],
+    Blue: ['#1565c0', '#fffaf0'],
+    Yellow: ['#f6c624', '#1c1c1c'],
+    Green: ['#2e7d32', '#fffaf0'],
 };
 
 function rrect(ctx, x, y, w, h, r) {
@@ -144,12 +151,14 @@ function drawBadge(r, photo) {
     ctx.fillText(ch.lines[0], cx, y + (two ? 40 : 46));
 
     // role band
-    const [bg, fg] = ROLE_COLORS[r.role] || ['#ee7a22', '#1c1c1c'];
+    const team = r.team && TEAM_COLORS[r.team] ? r.team : '';
+    const [bg, fg] = team ? TEAM_COLORS[team] : ROLE_COLORS[r.role] || ['#ee7a22', '#1c1c1c'];
     const BAND = 900;
     ctx.fillStyle = bg;
     ctx.fillRect(0, BAND, W, 76);
     ctx.fillStyle = fg;
-    const role = fitText(ctx, String(r.role).toUpperCase(), 800, 40, 26, W - 60);
+    const bandText = team ? `${String(r.role).toUpperCase()} · ${team.toUpperCase()} TEAM` : String(r.role).toUpperCase();
+    const role = fitText(ctx, bandText, 800, 40, 24, W - 60);
     ctx.font = `800 ${role.size}px Outfit, system-ui, sans-serif`;
     if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
     ctx.fillText(role.lines[0], cx, BAND + 52);
