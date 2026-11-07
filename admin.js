@@ -368,19 +368,21 @@ function renderTable() {
         const tdPh = el('td');
         tdPh.append(ph);
         tr.append(tdPh);
-        const tdPay = el('td', 'pay-cell');
-        tdPay.append(pay);
+        const tdPay = el('td');
+        const payBox = el('div', 'pay-cell');   // flex lives inside the cell, so the <td> stays a normal table cell
+        tdPay.append(payBox);
+        payBox.append(pay);
         if (canMarkCash(r)) {
             const m = el('button', 'mini', 'Mark paid (cash)');
             m.type = 'button';
             m.addEventListener('click', () => markCash([r], m));
-            tdPay.append(m);
+            payBox.append(m);
         } else if (cashPaid) {
             const u = el('button', 'mini undo', 'Undo');
             u.type = 'button';
             u.title = 'Undo this cash payment';
             u.addEventListener('click', () => undoCash(r, u));
-            tdPay.append(u);
+            payBox.append(u);
         }
         tr.append(tdPay);
         const td = el('td');

@@ -234,7 +234,9 @@ td .linkbtn:disabled { color: var(--line); cursor: not-allowed; }
 .cash-bar b { display: block; }
 .cash-bar .panel-note { margin: 2px 0 0; display: block; }
 .cash-status { color: #1f6b43; }
-.pay-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pay-cell { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+td { vertical-align: middle; }
+td:last-child { text-align: right; }
 .mini {
     font: inherit;
     font-size: .76rem;
