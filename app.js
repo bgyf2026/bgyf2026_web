@@ -488,6 +488,7 @@ function payLabel(st) {
     if (st === 'Verified') return 'Paid';
     if (st === 'Pending') return 'Pending verification';
     if (st === 'Rejected') return 'Not accepted, please pay again';
+    if (st === 'Over the counter') return 'Pay over the counter';
     return 'Not paid';
 }
 
@@ -539,7 +540,7 @@ function renderMe() {
             photoBtn.addEventListener('click', () => openTab('photo'));
             actions.append(photoBtn);
         }
-        if (r.payment !== 'Verified' && r.payment !== 'Pending') {
+        if (r.payment !== 'Verified' && r.payment !== 'Pending' && r.payment !== 'Over the counter') {
             const payBtn = el('button', 'btn small-dark accent', `Pay ₱${REG_FEE}`);
             payBtn.type = 'button';
             payBtn.addEventListener('click', () => openTab('pay'));
@@ -741,6 +742,20 @@ const payCount = $('pay-count');
 const payReceipt = photoPicker('pay-receipt', 'pay-preview', 'pay-ph', 'receipt', 'receipt');
 const peso = (n) => '₱' + n.toLocaleString('en-PH');
 
+function payMethod() {
+    return document.querySelector('[name=pay_method]:checked').value;
+}
+
+function showMethod() {
+    const otc = payMethod() === 'otc';
+    $('gcash-box').hidden = otc;
+    $('otc-info').hidden = !otc;
+    payForm.querySelectorAll('.gcash-only').forEach((x) => { x.hidden = otc; });
+    $('pay-submit').textContent = otc ? "Submit: I'll pay in cash" : 'Submit payment';
+    clearErrors(payForm, $('pay-alert'));
+}
+document.querySelectorAll('[name=pay_method]').forEach((r) => r.addEventListener('change', showMethod));
+
 function payType() {
     return payForm.querySelector('[name=pay_type]:checked').value;
 }
@@ -811,6 +826,7 @@ payForm.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     clearErrors(payForm, $('pay-alert'));
     const multiple = payType() === 'multiple';
+    const otc = payMethod() === 'otc';
     const n = payN();
     const codes = [...payCodes.querySelectorAll('input')].map((i) => i.value.replace(/\s+/g, '').toUpperCase());
     const ref = $('pay-ref').value.replace(/[\s-]/g, '').toUpperCase();
@@ -822,19 +838,27 @@ payForm.addEventListener('submit', async (ev) => {
         const twice = codes.find((c, i) => codes.indexOf(c) !== i);
         if (twice) errs.codes = `Code ${twice} is entered more than once.`;
     }
-    if (!job) errs.receipt = 'Please upload a screenshot of your GCash receipt.';
-    if (!/^[0-9A-Z]{6,20}$/.test(ref)) errs.ref = 'Enter the Reference No. exactly as it appears on your receipt.';
+    if (!otc && !job) errs.receipt = 'Please upload a screenshot of your GCash receipt.';
+    if (!otc && !/^[0-9A-Z]{6,20}$/.test(ref)) errs.ref = 'Enter the Reference No. exactly as it appears on your receipt.';
     if (Object.keys(errs).length) return setErrors(payForm, errs);
 
     const btn = $('pay-submit');
     btn.disabled = true;
-    btn.textContent = 'Preparing receipt…';
+    btn.textContent = otc ? 'Sending…' : 'Preparing receipt…';
     try {
-        const receipt = await job;
+        const receipt = otc ? null : await job;
         btn.textContent = 'Sending…';
-        const out = await callApi({ action: 'pay', pay_type: multiple ? 'multiple' : 'single', count: n, codes, ref, receipt });
+        const out = await callApi(otc
+            ? { action: 'pay', method: 'otc', pay_type: multiple ? 'multiple' : 'single', count: n, codes }
+            : { action: 'pay', pay_type: multiple ? 'multiple' : 'single', count: n, codes, ref, receipt });
         if (out.ok) {
-            $('pd-ref').textContent = out.ref;
+            $('pd-kicker').textContent = otc ? 'Over the counter' : 'Receipt received';
+            $('pd-title').textContent = otc ? 'Please pay in cash' : 'Waiting for verification';
+            $('pd-text').textContent = otc
+                ? 'Bring the amount below to the BGYF registration team. Your pass will show Paid once they record your payment.'
+                : 'The organizers will check your payment against GCash. Your pass will show Paid once it is verified.';
+            $('pd-ref-wrap').hidden = otc;
+            $('pd-ref').textContent = out.ref || '';
             $('pd-amount').textContent = peso(out.amount);
             const list = $('pd-people');
             list.replaceChildren();
@@ -844,7 +868,7 @@ payForm.addEventListener('submit', async (ev) => {
                 list.append(li);
             });
             const paid = new Set(out.people.map((p) => String(p.reg_code)));
-            saveMe((loadMe() || []).map((r) => (paid.has(String(r.reg_code)) ? Object.assign({}, r, { payment: 'Pending' }) : r)));
+            saveMe((loadMe() || []).map((r) => (paid.has(String(r.reg_code)) ? Object.assign({}, r, { payment: otc ? 'Over the counter' : 'Pending' }) : r)));
             renderMe();
             hide(payForm);
             show($('pay-done'));
@@ -858,7 +882,7 @@ payForm.addEventListener('submit', async (ev) => {
         show($('pay-alert'), 'Could not reach the server. Check your internet connection and try again.');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Submit payment';
+        btn.textContent = payMethod() === 'otc' ? "Submit: I'll pay in cash" : 'Submit payment';
     }
 });
 
@@ -869,6 +893,7 @@ $('pay-again').addEventListener('click', () => {
     $('pay-count-wrap').hidden = true;
     hide($('pay-done'));
     show(payForm);
+    showMethod();
     renderPayCodes();
 });
 

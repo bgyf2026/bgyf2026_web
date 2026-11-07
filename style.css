@@ -611,3 +611,11 @@ footer { max-width: 580px; margin: 18px auto 0; text-align: center; color: rgba(
 .pass-meta dd.team-blue { color: #82b1ff; }
 .pass-meta dd.team-yellow { color: #f6cb4c; }
 .pass-meta dd.team-green { color: #7fd6a3; }
+
+/* ---------- Over the counter ---------- */
+.pay-method { margin-top: 14px; }
+.otc-info { margin: 14px 0 20px; padding: 16px; border-radius: 14px; background: var(--asphalt); color: var(--cream); }
+.otc-info b { color: var(--orange-2); }
+.otc-info p { margin: 6px 0 0; font-size: .92rem; color: rgba(246, 241, 221, .85); }
+.otc-info p b { color: var(--cream); }
+.pay-summary div[hidden] { display: none; }

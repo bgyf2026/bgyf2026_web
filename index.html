@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
 <main class="card">
@@ -185,12 +185,26 @@
     <!-- ============ PAYMENT ============ -->
     <section id="tab-pay" role="tabpanel" aria-labelledby="t-pay" hidden>
         <h2>Payment</h2>
-        <p class="hint left">Registration fee is <b>&#8369;<span class="fee">400</span> per person</b>. Pay through GCash, then send your receipt here. You can pay for yourself or for a group.</p>
+        <p class="hint left">Registration fee is <b>&#8369;<span class="fee">400</span> per person</b>. Pay through GCash or in cash over the counter. You can pay for yourself or for a group.</p>
 
-        <div class="gcash">
+        <fieldset class="field pay-method">
+            <span>How will you pay?</span>
+            <div class="seg">
+                <label><input type="radio" name="pay_method" value="gcash" checked><span>GCash</span></label>
+                <label><input type="radio" name="pay_method" value="otc"><span>Over the counter (cash)</span></label>
+            </div>
+        </fieldset>
+
+        <div class="otc-info" id="otc-info" hidden>
+            <b>Paying in cash</b>
+            <!-- EDIT: where and when people can pay in cash -->
+            <p>Pay &#8369;400 per person in cash to the BGYF registration team. Tell us below who you are paying for, then bring the exact amount. Your pass will show <b>Paid</b> once the team records your payment.</p>
+        </div>
+
+        <div class="gcash" id="gcash-box">
             <img src="assets/gcash-qr.jpg" width="560" height="695" alt="GCash QR code for the registration fee">
             <dl>
-                <div><dt>GCash number</dt><dd><span id="gcash-no">+63 963 087 5324</span></dd></div>
+                <div><dt>GCash number</dt><dd><span id="gcash-no">+63 963 087 ••••</span></dd></div>
                 <div><dt>Account name</dt><dd>PR******A R.</dd></div>
             </dl>
             <a class="copy save-qr" href="assets/gcash-qr.jpg" download="BGYF-2026-GCash-QR.jpg">Save QR image</a>
@@ -198,11 +212,11 @@
         </div>
 
         <div id="pay-done" class="pay-done" hidden aria-live="polite">
-            <p class="kicker">Receipt received</p>
-            <h2>Waiting for verification</h2>
-            <p>The organizers will check your payment against GCash. Your pass will show <b>Paid</b> once it is verified.</p>
+            <p class="kicker" id="pd-kicker">Receipt received</p>
+            <h2 id="pd-title">Waiting for verification</h2>
+            <p id="pd-text">The organizers will check your payment against GCash. Your pass will show <b>Paid</b> once it is verified.</p>
             <dl class="pay-summary">
-                <div><dt>Reference No.</dt><dd id="pd-ref"></dd></div>
+                <div id="pd-ref-wrap"><dt>Reference No.</dt><dd id="pd-ref"></dd></div>
                 <div><dt>Amount</dt><dd id="pd-amount"></dd></div>
             </dl>
             <ul class="pay-people" id="pd-people"></ul>
@@ -237,7 +251,7 @@
                 <small id="pay-due-note">1 registrant &times; &#8369;400</small>
             </div>
 
-            <div class="field">
+            <div class="field gcash-only">
                 <span>Proof of payment</span>
                 <label class="photo-pick receipt-pick" for="pay-receipt">
                     <img class="photo-preview" id="pay-preview" alt="Your receipt" hidden>
@@ -251,7 +265,7 @@
                 <small class="err" data-for="receipt"></small>
             </div>
 
-            <label class="field">
+            <label class="field gcash-only">
                 <span>Reference No.</span>
                 <input type="text" name="ref" id="pay-ref" maxlength="30" inputmode="numeric" autocomplete="off" placeholder="e.g. 1003 456 789 012">
                 <p class="photo-tips">Type it exactly as it appears on your receipt (13 digits for GCash).</p>
@@ -366,9 +380,9 @@
     </div>
 </main>
 <footer>NO TURNING BACK · BGYF 2026</footer>
-<script src="config.js?v=13"></script>
-<script src="badge.js?v=13"></script>
-<script src="program.js?v=13"></script>
-<script src="app.js?v=13"></script>
+<script src="config.js?v=14"></script>
+<script src="badge.js?v=14"></script>
+<script src="program.js?v=14"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>

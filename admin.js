@@ -38,6 +38,7 @@ function payLabel(st) {
     if (st === 'Verified') return 'Paid';
     if (st === 'Pending') return 'Pending';
     if (st === 'Rejected') return 'Rejected';
+    if (st === 'Over the counter') return 'Cash due';
     return 'Not paid';
 }
 
@@ -135,6 +136,8 @@ function render() {
     const pending = R.filter((r) => r.payment === 'Pending').length;
     const photos = R.filter((r) => r.has_photo).length;
     const collected = P.filter((p) => p.status === 'Verified').reduce((a, p) => a + p.amount, 0);
+    const cash = P.filter((p) => p.status === 'Verified' && p.method === 'Over the counter').reduce((a, p) => a + p.amount, 0);
+    const otc = R.filter((r) => r.payment === 'Over the counter').length;
     const pendingAmt = P.filter((p) => p.status === 'Pending').reduce((a, p) => a + p.amount, 0);
     const churches = new Set(R.map((r) => r.local_church.trim().toLowerCase()).filter(Boolean)).size;
 
@@ -145,8 +148,8 @@ function render() {
         kpi('Registrants', String(total), `${churches} church${churches === 1 ? '' : 'es'}`, 'lead'),
         kpi('Paid', String(paid), `${pct(paid, total)}% of registrants`, 'good'),
         kpi('Pending verification', String(pending), pendingAmt ? `${peso(pendingAmt)} to check` : 'Nothing to check', pending ? 'warn' : ''),
-        kpi('Not paid', String(total - paid - pending), `${peso((total - paid - pending) * DATA.fee)} expected`),
-        kpi('Collected', peso(collected), `${peso(DATA.fee)} per person`),
+        kpi('Not paid', String(total - paid - pending), `${peso((total - paid - pending) * DATA.fee)} expected` + (otc ? ` · ${otc} paying in cash` : '')),
+        kpi('Collected', peso(collected), `${peso(collected - cash)} GCash · ${peso(cash)} cash`),
         kpi('With ID photo', String(photos), `${total - photos} still missing`),
     );
 
@@ -162,6 +165,7 @@ function render() {
     bars('by-pay', [
         { label: 'Paid', n: paid, cls: 'good' },
         { label: 'Pending verification', n: pending, cls: 'warn' },
+        { label: 'Paying over the counter', n: otc, cls: 'otc' },
         { label: 'Not paid', n: R.filter((r) => !r.payment).length, cls: 'muted' },
         { label: 'Rejected', n: R.filter((r) => r.payment === 'Rejected').length, cls: 'bad' },
     ].filter((x) => x.n || x.label !== 'Rejected'), total);
@@ -326,6 +330,9 @@ function renderTable() {
     const body = $('rows');
     body.replaceChildren();
     $('list-count').textContent = `${list.length} of ${DATA.registrants.length} shown`;
+    const unpaid = list.filter(canMarkCash).length;
+    $('cash-all').disabled = !unpaid;
+    $('cash-all').textContent = unpaid ? `Mark ${unpaid} shown as paid (cash)` : 'Mark shown as paid (cash)';
     if (!list.length) {
         const tr = el('tr');
         const td = el('td', 'empty', 'No registrants match these filters.');
@@ -335,7 +342,8 @@ function renderTable() {
     }
     list.forEach((r) => {
         const tr = el('tr');
-        const pay = el('span', 'pill ' + (r.payment === 'Verified' ? 'good' : r.payment === 'Pending' ? 'warn' : r.payment === 'Rejected' ? 'bad' : 'muted'), payLabel(r.payment));
+        const cashPaid = r.payment === 'Verified' && /^CASH-/i.test(r.payment_ref || '');
+        const pay = el('span', 'pill ' + (r.payment === 'Verified' ? 'good' : r.payment === 'Pending' ? 'warn' : r.payment === 'Rejected' ? 'bad' : r.payment === 'Over the counter' ? 'otc' : 'muted'), payLabel(r.payment) + (cashPaid ? ' · cash' : ''));
         const ph = el('span', 'pill ' + (r.has_photo ? 'good' : 'muted'), r.has_photo ? 'Yes' : 'No');
         const btn = el('button', 'linkbtn', 'Badge');
         btn.type = 'button';
@@ -357,13 +365,70 @@ function renderTable() {
         }
         tr.append(tdTeam);
         [r.age || '', r.sex].forEach((v) => tr.append(el('td', '', String(v))));
-        [ph, pay].forEach((p) => { const td = el('td'); td.append(p); tr.append(td); });
+        const tdPh = el('td');
+        tdPh.append(ph);
+        tr.append(tdPh);
+        const tdPay = el('td', 'pay-cell');
+        tdPay.append(pay);
+        if (canMarkCash(r)) {
+            const m = el('button', 'mini', 'Mark paid (cash)');
+            m.type = 'button';
+            m.addEventListener('click', () => markCash([r], m));
+            tdPay.append(m);
+        } else if (cashPaid) {
+            const u = el('button', 'mini undo', 'Undo');
+            u.type = 'button';
+            u.title = 'Undo this cash payment';
+            u.addEventListener('click', () => undoCash(r, u));
+            tdPay.append(u);
+        }
+        tr.append(tdPay);
         const td = el('td');
         td.append(btn);
         tr.append(td);
         body.append(tr);
     });
 }
+
+// ---------- cash paid over the counter ----------
+function canMarkCash(r) {
+    return !r.payment || r.payment === 'Over the counter' || r.payment === 'Rejected';
+}
+
+async function cashOp(payload, btn, busy, done) {
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = busy;
+    try {
+        const out = await api(payload);
+        if (!out.ok) throw new Error(out.error || 'failed');
+        DATA = Object.assign(DATA, out);
+        render();
+        $('cash-status').textContent = done(out);
+    } catch (err) {
+        btn.disabled = false;
+        btn.textContent = label;
+        $('cash-status').textContent = err.message && err.message !== 'failed' ? err.message : 'Could not save. Check your internet connection and try again.';
+    }
+}
+
+function markCash(list, btn) {
+    const names = list.length === 1 ? list[0].full_name : `${list.length} registrants`;
+    if (list.length > 1 && !confirm(`Record ${peso(DATA.fee * list.length)} cash paid for ${names}?`)) return;
+    cashOp({ op: 'cash_paid', codes: list.map((r) => r.reg_code) }, btn, 'Saving…',
+        (out) => `${out.marked} registrant${out.marked === 1 ? '' : 's'} marked as paid in cash (${peso(DATA.fee * out.marked)}).`);
+}
+
+function undoCash(r, btn) {
+    if (!confirm(`Undo the cash payment for ${r.full_name}? They will show as Not paid again.`)) return;
+    cashOp({ op: 'cash_undo', reg_code: r.reg_code }, btn, 'Undoing…', () => `${r.full_name}'s cash payment was undone.`);
+}
+
+$('cash-all').addEventListener('click', () => {
+    const list = shown().filter(canMarkCash);
+    if (!list.length) { $('cash-status').textContent = 'No unpaid registrants in this list.'; return; }
+    markCash(list, $('cash-all'));
+});
 
 ['f-q', 'f-role', 'f-church', 'f-pay', 'f-team', 'f-photo'].forEach((id) => $(id).addEventListener('input', renderTable));
 $('use-sample').addEventListener('change', renderTable);

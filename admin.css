@@ -218,3 +218,39 @@ td .linkbtn:disabled { color: var(--line); cursor: not-allowed; }
     .team-tiles { grid-template-columns: 1fr 1fr; }
     .switch { margin-left: 0; }
 }
+
+/* ---------- Cash paid over the counter ---------- */
+.cash-bar {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px 16px;
+    align-items: center;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+    border: 1.5px solid var(--line);
+    background: var(--cream-2);
+}
+.cash-bar b { display: block; }
+.cash-bar .panel-note { margin: 2px 0 0; display: block; }
+.cash-status { color: #1f6b43; }
+.pay-cell { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mini {
+    font: inherit;
+    font-size: .76rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1.5px solid #1f7a4d;
+    background: transparent;
+    color: #1f6b43;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.mini:hover { background: #e3f2e8; }
+.mini.undo { border-color: var(--line); color: var(--muted); }
+.mini.undo:hover { background: rgba(28, 28, 28, .06); }
+.mini:disabled { opacity: .6; cursor: wait; }
+.pill.otc { background: #ffe8d1; color: #9a4a00; }
+.bar-row.otc .bar-fill { background: #e08a3c; }
+@media (max-width: 760px) { .cash-bar { grid-template-columns: 1fr; } }

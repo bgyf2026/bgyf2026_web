@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=13">
-<link rel="stylesheet" href="admin.css?v=2">
+<link rel="stylesheet" href="admin.css?v=3">
 </head>
 <body class="admin">
 
@@ -113,6 +113,7 @@
                 <option value="">Any payment</option>
                 <option value="Verified">Paid</option>
                 <option value="Pending">Pending verification</option>
+                <option value="Over the counter">Paying over the counter</option>
                 <option value="none">Not paid</option>
                 <option value="Rejected">Rejected</option>
             </select>
@@ -129,6 +130,15 @@
                 <option value="yes">With photo</option>
                 <option value="no">No photo</option>
             </select>
+        </div>
+
+        <div class="cash-bar">
+            <div>
+                <b>Cash paid over the counter</b>
+                <span class="panel-note">Record cash for anyone not yet paid: use the button on a row, or filter the list (for example by church) and mark everyone shown.</span>
+            </div>
+            <button class="btn small-btn" type="button" id="cash-all">Mark shown as paid (cash)</button>
+            <p class="bulk-status cash-status" id="cash-status" aria-live="polite"></p>
         </div>
 
         <div class="bulk">
@@ -172,6 +182,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="config.js?v=13"></script>
 <script src="badge.js?v=13"></script>
-<script src="admin.js?v=2"></script>
+<script src="admin.js?v=3"></script>
 </body>
 </html>
