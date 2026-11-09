@@ -256,3 +256,4 @@ td:last-child { text-align: right; }
 .pill.otc { background: #ffe8d1; color: #9a4a00; }
 .bar-row.otc .bar-fill { background: #e08a3c; }
 @media (max-width: 760px) { .cash-bar { grid-template-columns: 1fr; } }
+.pill.nofee { background: transparent; color: var(--muted); border: 1px dashed var(--line); font-weight: 600; }

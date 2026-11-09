@@ -7,6 +7,7 @@ const ROLES = ['Youth Delegate', 'Pastor', 'BGYF Officer', 'Workers', 'Church Me
 const SAMPLE_PHOTOS = { Male: 'assets/avatar-male.jpg', Female: 'assets/avatar-female.jpg' };
 const TEAMS = ['Red', 'Blue', 'Yellow', 'Green'];
 const TEAM_ROLE = 'Youth Delegate';
+const FEE_ROLE = 'Youth Delegate';   // only this role pays the registration fee
 
 let DATA = null;
 let password = '';
@@ -34,7 +35,8 @@ async function api(payload) {
 function savePw(v) { try { if (v) sessionStorage.setItem(PW_KEY, v); else sessionStorage.removeItem(PW_KEY); } catch (e) {} }
 function loadPw() { try { return sessionStorage.getItem(PW_KEY) || ''; } catch (e) { return ''; } }
 
-function payLabel(st) {
+function payLabel(st, role) {
+    if (role && role !== FEE_ROLE && !st) return 'No fee';
     if (st === 'Verified') return 'Paid';
     if (st === 'Pending') return 'Pending';
     if (st === 'Rejected') return 'Rejected';
@@ -132,12 +134,14 @@ function render() {
     const R = DATA.registrants;
     const P = DATA.payments;
     const total = R.length;
-    const paid = R.filter((r) => r.payment === 'Verified').length;
-    const pending = R.filter((r) => r.payment === 'Pending').length;
+    const D = R.filter((r) => r.role === FEE_ROLE);   // only Youth Delegates pay the fee
+    const payers = D.length;
+    const paid = D.filter((r) => r.payment === 'Verified').length;
+    const pending = D.filter((r) => r.payment === 'Pending').length;
     const photos = R.filter((r) => r.has_photo).length;
     const collected = P.filter((p) => p.status === 'Verified').reduce((a, p) => a + p.amount, 0);
     const cash = P.filter((p) => p.status === 'Verified' && p.method === 'Over the counter').reduce((a, p) => a + p.amount, 0);
-    const otc = R.filter((r) => r.payment === 'Over the counter').length;
+    const otc = D.filter((r) => r.payment === 'Over the counter').length;
     const pendingAmt = P.filter((p) => p.status === 'Pending').reduce((a, p) => a + p.amount, 0);
     const churches = new Set(R.map((r) => r.local_church.trim().toLowerCase()).filter(Boolean)).size;
 
@@ -146,9 +150,9 @@ function render() {
     const k = $('kpis');
     k.replaceChildren(
         kpi('Registrants', String(total), `${churches} church${churches === 1 ? '' : 'es'}`, 'lead'),
-        kpi('Paid', String(paid), `${pct(paid, total)}% of registrants`, 'good'),
+        kpi('Paid', `${paid} / ${payers}`, `${pct(paid, payers)}% of Youth Delegates`, 'good'),
         kpi('Pending verification', String(pending), pendingAmt ? `${peso(pendingAmt)} to check` : 'Nothing to check', pending ? 'warn' : ''),
-        kpi('Not paid', String(total - paid - pending), `${peso((total - paid - pending) * DATA.fee)} expected` + (otc ? ` · ${otc} paying in cash` : '')),
+        kpi('Not paid', String(payers - paid - pending), `${peso((payers - paid - pending) * DATA.fee)} expected` + (otc ? ` · ${otc} paying in cash` : '')),
         kpi('Collected', peso(collected), `${peso(collected - cash)} GCash · ${peso(cash)} cash`),
         kpi('With ID photo', String(photos), `${total - photos} still missing`),
     );
@@ -166,9 +170,9 @@ function render() {
         { label: 'Paid', n: paid, cls: 'good' },
         { label: 'Pending verification', n: pending, cls: 'warn' },
         { label: 'Paying over the counter', n: otc, cls: 'otc' },
-        { label: 'Not paid', n: R.filter((r) => !r.payment).length, cls: 'muted' },
-        { label: 'Rejected', n: R.filter((r) => r.payment === 'Rejected').length, cls: 'bad' },
-    ].filter((x) => x.n || x.label !== 'Rejected'), total);
+        { label: 'Not paid', n: D.filter((r) => !r.payment).length, cls: 'muted' },
+        { label: 'Rejected', n: D.filter((r) => r.payment === 'Rejected').length, cls: 'bad' },
+    ].filter((x) => x.n || x.label !== 'Rejected'), payers);
     const waiting = P.filter((p) => p.status === 'Pending').length;
     $('pay-note').textContent = waiting
         ? `${waiting} payment${waiting === 1 ? '' : 's'} (${pending} registrant${pending === 1 ? '' : 's'}) waiting. Verify them in the Payments tab of the Sheet.`
@@ -319,7 +323,7 @@ function shown() {
         .filter((r) => !q || [r.full_name, r.reg_code, r.local_church, r.email].join(' ').toLowerCase().includes(q))
         .filter((r) => !role || r.role === role)
         .filter((r) => !church || r.local_church.trim() === church)
-        .filter((r) => !pay || (pay === 'none' ? !r.payment : r.payment === pay))
+        .filter((r) => !pay || (pay === 'none' ? r.role === FEE_ROLE && !r.payment : pay === 'nofee' ? r.role !== FEE_ROLE && !r.payment : r.payment === pay))
         .filter((r) => !photo || (photo === 'yes' ? r.has_photo : !r.has_photo))
         .filter((r) => !team || (team === 'none' ? r.role === TEAM_ROLE && !r.team : r.team === team))
         .sort((a, b) => a.full_name.localeCompare(b.full_name));
@@ -343,7 +347,7 @@ function renderTable() {
     list.forEach((r) => {
         const tr = el('tr');
         const cashPaid = r.payment === 'Verified' && /^CASH-/i.test(r.payment_ref || '');
-        const pay = el('span', 'pill ' + (r.payment === 'Verified' ? 'good' : r.payment === 'Pending' ? 'warn' : r.payment === 'Rejected' ? 'bad' : r.payment === 'Over the counter' ? 'otc' : 'muted'), payLabel(r.payment) + (cashPaid ? ' · cash' : ''));
+        const pay = el('span', 'pill ' + (r.payment === 'Verified' ? 'good' : r.payment === 'Pending' ? 'warn' : r.payment === 'Rejected' ? 'bad' : r.payment === 'Over the counter' ? 'otc' : r.role !== FEE_ROLE ? 'nofee' : 'muted'), payLabel(r.payment, r.role) + (cashPaid ? ' · cash' : ''));
         const ph = el('span', 'pill ' + (r.has_photo ? 'good' : 'muted'), r.has_photo ? 'Yes' : 'No');
         const btn = el('button', 'linkbtn', 'Badge');
         btn.type = 'button';
@@ -394,6 +398,7 @@ function renderTable() {
 
 // ---------- cash paid over the counter ----------
 function canMarkCash(r) {
+    if (r.role !== FEE_ROLE) return false;   // only Youth Delegates pay the fee
     return !r.payment || r.payment === 'Over the counter' || r.payment === 'Rejected';
 }
 

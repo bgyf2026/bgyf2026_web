@@ -6,7 +6,8 @@ const lookupForm = $('lookup');
 const STORE_KEY = 'bgyf2026_me';
 const PHOTO_MAX_BYTES = 5 * 1024 * 1024;  // 5 MB
 const PHOTO_MAX_SIDE = 1600;              // px; plenty for a printed ID, much faster to upload
-const REG_FEE = 400;                      // PHP per registrant; keep the same as REG_FEE in Code.gs
+const REG_FEE = 400;                      // PHP per Youth Delegate; keep the same as REG_FEE in Code.gs
+const FEE_ROLE = 'Youth Delegate';        // only this role pays the registration fee
 const MAX_GROUP = 30;                     // most registrants in one multiple payment
 
 // ---------- small helpers ----------
@@ -484,7 +485,8 @@ editForm.addEventListener('submit', async (ev) => {
     }
 });
 
-function payLabel(st) {
+function payLabel(st, role) {
+    if (role && role !== FEE_ROLE && !st) return 'No fee';
     if (st === 'Verified') return 'Paid';
     if (st === 'Pending') return 'Pending verification';
     if (st === 'Rejected') return 'Not accepted, please pay again';
@@ -523,9 +525,9 @@ function renderMe() {
         c.append(el('p', 'pass-name', r.full_name));
         c.append(el('p', 'code', r.reg_code));
         const dl = el('dl', 'pass-meta');
-        [['Church', r.local_church], ['Role', r.role], ['Registered', r.registered_at], ['ID photo', r.has_photo ? 'Uploaded' : 'Missing'], ['Payment', payLabel(r.payment)]].concat(r.team ? [['Team', `${r.team} team`]] : []).forEach(([k, v]) => {
+        [['Church', r.local_church], ['Role', r.role], ['Registered', r.registered_at], ['ID photo', r.has_photo ? 'Uploaded' : 'Missing'], ['Payment', payLabel(r.payment, r.role)]].concat(r.team ? [['Team', `${r.team} team`]] : []).forEach(([k, v]) => {
             const d = el('div');
-            const warn = (k === 'ID photo' && !r.has_photo) || (k === 'Payment' && r.payment !== 'Verified');
+            const warn = (k === 'ID photo' && !r.has_photo) || (k === 'Payment' && r.role === FEE_ROLE && r.payment !== 'Verified');
             d.append(el('dt', '', k), el('dd', (warn ? 'missing' : '') + (k === 'Payment' && r.payment === 'Verified' ? ' paid' : '') + (k === 'Team' ? ' team team-' + String(r.team).toLowerCase() : ''), v));
             dl.append(d);
         });
@@ -540,7 +542,7 @@ function renderMe() {
             photoBtn.addEventListener('click', () => openTab('photo'));
             actions.append(photoBtn);
         }
-        if (r.payment !== 'Verified' && r.payment !== 'Pending' && r.payment !== 'Over the counter') {
+        if (r.role === FEE_ROLE && r.payment !== 'Verified' && r.payment !== 'Pending' && r.payment !== 'Over the counter') {
             const payBtn = el('button', 'btn small-dark accent', `Pay ₱${REG_FEE}`);
             payBtn.type = 'button';
             payBtn.addEventListener('click', () => openTab('pay'));
@@ -787,8 +789,8 @@ function renderPayCodes() {
     payCodes.classList.toggle('many', n > 1);
     $('pay-codes-label').textContent = n > 1 ? 'Registration codes' : 'Registration code';
     $('pay-codes-hint').textContent = n > 1
-        ? 'Enter the 6-digit code from each person\'s pass card. Each person must register first.'
-        : 'The 6-digit code on the pass card.';
+        ? 'Enter the 6-digit code from each Youth Delegate\'s pass card. Each person must register first.'
+        : 'The 6-digit code on the pass card. Only Youth Delegates pay the fee.';
     prefillPayCodes();
     updateDue();
 }
@@ -797,7 +799,7 @@ function renderPayCodes() {
 function prefillPayCodes() {
     const first = payCodes.querySelector('input');
     if (!first || (first.value && first.dataset.auto !== '1')) return;
-    const mine = (loadMe() || []).find((r) => r.payment !== 'Verified' && r.payment !== 'Pending');
+    const mine = (loadMe() || []).find((r) => r.role === FEE_ROLE && r.payment !== 'Verified' && r.payment !== 'Pending');
     first.value = mine ? String(mine.reg_code) : '';
     first.dataset.auto = mine ? '1' : '';
     if (!first.dataset.watch) {
